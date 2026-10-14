@@ -1,0 +1,5072 @@
+/* ==========================================================================
+   Design Tokens & Variables
+   ========================================================================== */
+:root {
+    /* Color Palette - Deep Dark Editorial */
+    /* Darkened ground with the blue tint kept, and body text pulled toward
+       white, so the page reads at higher contrast throughout. */
+    --color-bg: #04080d;           /* the black end of the page blend */
+    --color-bg-blue: #0C1C3A;      /* the blue end — same navy as the flower artwork */
+
+    /* Footer panel. --footer-foot must stay equal to whatever the page blend
+       resolves to behind the footer, or the panel stops dissolving and reads
+       as a block; --footer-blue is the vivid rim it climbs to. */
+    --footer-foot: #0C1C3A;        /* the page blend's last stop, above */
+    --footer-blue: oklch(0.66 0.182 258);
+
+    /* More Work card CTA: a dark pill at rest that lights to the accent blue
+       under the pointer — the pair of states in the reference. */
+    --cta-bg: oklch(0.28 0.035 272);
+    --cta-bg-hover: oklch(0.66 0.182 258);
+    --color-bg-card: #0a121b;      /* was #0c1520 */
+    --color-text: #ffffff;         /* Pure white for primary headers */
+    --color-text-muted: #aebcc9;   /* was #8a99a8 */
+    --color-text-light: #7d8fa1;   /* was #526375 */
+    --color-border: #17273a;       /* Thin layout borders */
+    --color-border-hover: #243b58; /* Hover outline */
+    --color-accent: #ff6b9d;       /* The single pink accent */
+
+    /* Impact figures. The pink accent is loud at display size and three of
+       them in a row read as noise, so the numbers get a cool blue of their
+       own. Two values rather than one: a pale steel blue for the dark card,
+       a deep one for the white card, same hue so the pair reads as one
+       colour across themes. Contrast on their own card ground is 8.8:1 dark
+       and 6.0:1 light. */
+    --color-figure: oklch(0.76 0.09 252);
+
+    /* Case study section labels (CONTEXT, GOAL, PRINCIPLES...). These used to
+       borrow --color-text-light, which in light mode sits within 1.2:1 of the
+       body colour — near enough that the label stopped reading as a heading.
+       This is the same cool hue family as the figures, pushed past the body
+       text in both themes: 1.8:1 against it in light, 1.6:1 in dark. */
+    --color-label: oklch(0.93 0.015 250);
+    --color-nav-bg: rgba(8, 16, 24, 0.75);
+
+    /* Fonts */
+    --font-serif: "Instrument Serif", Georgia, serif;
+    /* Google Sans Flex — matching antigravity.google. Plus Jakarta Sans stays
+       as the first fallback so nothing shifts if the variable font fails. */
+    --font-sans: "Google Sans Flex", "Google Sans", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+    /* Spacing Grid (Swiss Disciplined Scale) */
+    --space-xxs: 4px;
+    --space-xs: 8px;
+    --space-sm: 16px;
+    --space-md: 28px;
+    --space-lg: 56px;
+    --space-xl: 96px;
+    --space-xxl: 160px;
+    
+    /* Layout Constants */
+    --border-radius-pill: 40px;
+    --border-radius-large: 24px;   /* Consistent rounded corners as requested */
+    --border-radius-small: 8px;
+    
+    /* Transitions */
+    --transition-ease: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    --transition-fast: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ==========================================================================
+   Reset & Document Base
+   ========================================================================== */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    scroll-behavior: smooth;
+    font-size: 16px;
+    /* Black into blue across the viewport. Fixed attachment maps the blend to
+       the screen rather than the document, so the ratio holds on every scroll
+       position instead of stretching over a 5000px page and flattening out.
+       The solid colour underneath covers overscroll. */
+    background-color: var(--color-bg);
+    background-image: linear-gradient(
+        180deg,
+        var(--color-bg) 0%,
+        #06101f 38%,
+        #0a1730 72%,
+        var(--color-bg-blue) 100%
+    );
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    color: var(--color-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Clips the hero's full-bleed overhang. This lives on html, not body:
+       overflow-x on body forces its overflow-y to `auto`, which makes body a
+       scroll container and silently breaks position: sticky inside it. */
+    overflow-x: hidden;
+}
+
+body {
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    /* `clip` rather than `hidden` — clip does not create a scroll container,
+       so sticky descendants keep anchoring to the viewport. */
+    overflow-x: clip;
+    padding-top: 40px;
+    padding-bottom: 136px; /* Space for the floating navigation at the bottom */
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+/* ==========================================================================
+   Centered Reading Lane (55–65% of viewport width)
+   ========================================================================== */
+.reading-lane {
+    max-width: 780px; /* Exact reading lane on desktop viewports */
+    margin: 0 auto;
+    padding: 0 var(--space-md);
+}
+
+/* Page View States (SPA Logic) */
+.page-view {
+    display: none;
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.page-view.active {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ==========================================================================
+   Floating Navigation Capsule
+   ========================================================================== */
+.nav-capsule-wrapper {
+    position: fixed;
+    /* Docked to the bottom, Discord-style. The safe-area inset keeps it clear
+       of the iPhone home indicator. */
+    bottom: calc(32px + env(safe-area-inset-bottom));
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    z-index: 1000;
+    pointer-events: none; /* Let clicks pass outside the capsule */
+}
+
+.nav-capsule {
+    pointer-events: auto; /* Active triggers inside capsule */
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 90%;
+    max-width: 600px;
+    height: 64px;
+    padding: 0 var(--space-md) 0 var(--space-sm);
+    border-radius: var(--border-radius-pill);
+
+    /* Liquid glass: a thin tinted layer over a strong, saturated blur.
+       The gradient is light falling across the material, not a fill. */
+    background:
+        linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.10) 0%,
+            rgba(255, 255, 255, 0.035) 45%,
+            rgba(255, 255, 255, 0.00) 100%
+        ),
+        rgba(10, 18, 28, 0.72);
+    backdrop-filter: blur(32px) saturate(180%);
+    -webkit-backdrop-filter: blur(32px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+
+    /* Specular rim (bright top edge = light catching the material), a faint
+       inner glow for thickness, then depth beneath. Large surface -> thicker
+       blur and a deeper shadow than a small chip would get. */
+    box-shadow:
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.28),
+        inset 0 -1px 0 0 rgba(255, 255, 255, 0.05),
+        inset 0 0 24px 0 rgba(255, 255, 255, 0.035),
+        0 16px 40px rgba(0, 0, 0, 0.45),
+        0 2px 8px rgba(0, 0, 0, 0.28);
+
+    /* transform is deliberately absent: the wrapper carries the hide/show
+       transform, so a competing one here would fight it. Blur and shadow are
+       timed with the wrapper's return curve — see the auto-hide block. */
+    transition:
+        box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+        backdrop-filter 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+        -webkit-backdrop-filter 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Soft gloss pooling at the top of the capsule. */
+.nav-capsule::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(
+        120% 100% at 50% 0%,
+        rgba(255, 255, 255, 0.13) 0%,
+        rgba(255, 255, 255, 0.00) 62%
+    );
+    pointer-events: none;
+}
+
+/* Keep contents above the gloss layer. */
+.nav-left,
+.nav-right {
+    position: relative;
+    z-index: 1;
+}
+
+/* Scrolled state — deeper shadow, slightly compressed. Set as a class so it
+   cannot clobber the inset specular rim the way an inline style would. */
+/* Shadow only — the scale is driven per frame from scroll position. */
+.nav-capsule.nav-scrolled {
+    box-shadow:
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.28),
+        inset 0 -1px 0 0 rgba(255, 255, 255, 0.05),
+        inset 0 0 24px 0 rgba(255, 255, 255, 0.035),
+        0 20px 50px rgba(0, 0, 0, 0.55),
+        0 3px 10px rgba(0, 0, 0, 0.35);
+}
+
+.nav-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.nav-profile-frame {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    overflow: hidden;
+    background-color: var(--color-border);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-profile-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.nav-designer-name {
+    font-size: 0.95rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--color-text);
+}
+
+.nav-right {
+    display: flex;
+    /* The active item no longer carries a pill, so the spacing has to come
+       from the gap rather than from each link's own padding. */
+    gap: var(--space-md);
+}
+
+/* Vibrancy: over a translucent surface, flat grey text loses legibility as the
+   backdrop shifts. Higher contrast, slightly heavier, small tracking bump. */
+.nav-pill-link {
+    font-size: 0.95rem;
+    /* Vibrancy. The capsule is a blur of whatever is scrolling under it, and
+       thin 400-weight text at 55% went soft over the busier frames. A half-step
+       of weight and a little more alpha hold it without touching the material
+       or the brightness-only active state. */
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.62);
+    letter-spacing: 0.01em;
+    padding: var(--space-xs) 0;
+    transition: var(--transition-fast);
+}
+
+.nav-pill-link:hover {
+    color: var(--color-text);
+}
+
+/* Active state is brightness only — the reference has no pill, box or rule
+   behind the current item. */
+.nav-pill-link.active {
+    background-color: transparent;
+    box-shadow: none;
+    color: var(--color-text);
+    font-weight: 500;
+}
+
+.nav-designer-name {
+    letter-spacing: 0.005em;
+}
+
+/* ==========================================================================
+   Hero Section
+   ========================================================================== */
+/* Centered hero, following antigravity.google's placement: one centred stack,
+   headline capped at 1100px, everything else centred beneath it. The hero
+   breaks out of the 780px .reading-lane so the headline has room to run. */
+.hero-section {
+    /* Exactly the visible viewport (body carries a 120px top pad for the fixed
+       nav), so the first fold reliably ends on the client logos at any window
+       height rather than drifting with a percentage. */
+    min-height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    /* Vertical rhythm scales with window height so the logos stay inside the
+       fold on short screens, where fixed 56/96px padding overflowed by ~42px. */
+    padding-top: clamp(24px, 5vh, 56px);
+    padding-bottom: clamp(24px, 6vh, 96px);
+    position: relative;
+
+    /* Full-bleed breakout. Symmetric negative margins with width:auto — not
+       width:100vw, which would add the horizontal padding on top of the
+       viewport width and push content off-screen. No transform either, so the
+       absolutely positioned particle canvas keeps its containing block. */
+    width: auto;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding-left: var(--space-md);
+    padding-right: var(--space-md);
+}
+
+.hero-headline {
+    font-family: var(--font-sans);
+    /* antigravity.google's proportions (line-height 1.1, tracking normal —
+       the typeface is drawn for display sizes and needs no tightening), but
+       dialled back from their 5rem/450 to sit better against the 780px lane
+       the rest of the page uses. 400 is Google Sans Flex's lightest weight. */
+    /* Full 4rem on a normal window, easing down on short ones so the client
+       logos stay inside the fold (at 620px tall, a fixed 4rem overflowed). */
+    font-size: clamp(2.5rem, 8.5vh, 4rem);
+    font-weight: 400;
+    line-height: 1.1;
+    letter-spacing: normal;
+    /* auto top margin: shares the free space above the headline with the gap
+       below the description, so the fold breathes instead of stacking at the top. */
+    margin-top: auto;
+    color: var(--color-text);
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: clamp(16px, 3vh, 28px);
+}
+
+.hero-description {
+    font-size: 1.125rem;
+    line-height: 1.6;
+    color: var(--color-text-muted);
+    max-width: 680px;
+    font-weight: 300;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: clamp(24px, 5vh, 56px);
+}
+
+/* Monochromatic Client Logos */
+.social-proof-row {
+    display: flex;
+    /* Pushed to the foot of the fold — the logos are the last thing in view. */
+    margin-top: auto;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-lg);
+    padding: clamp(16px, 3vh, 28px) 0;
+    border-top: 1px solid var(--color-border);
+    /* Last element of the fold — the old 96px pushed the section past it. */
+    margin-bottom: 0;
+    /* Track the headline's measure so the parting line spans the same width. */
+    width: 100%;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Monochrome wordmarks sitting quieter than the body copy, as in the
+   reference. All four source PNGs are 40px tall and already tinted to the
+   old --color-text-light, so a single height keeps them optically even and
+   the brightness lift matches them to the new, lighter muted text. */
+.client-logo {
+    height: 22px;
+    display: flex;
+    align-items: center;
+    opacity: 0.75;
+    transition: var(--transition-fast);
+}
+
+.client-logo:hover {
+    opacity: 1;
+}
+
+.logo-img {
+    height: 100%;
+    width: auto;
+    display: block;
+    /* Lifts the baked #526375 toward the new muted tone. */
+    filter: brightness(1.35);
+}
+
+/* Scroll Cue */
+.scroll-cue {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    opacity: 0.45;
+    /* A second auto margin after the logos' own: the fold's free space splits
+       between them, so the logos sit mid-fold and the cue rests at the foot —
+       the hand-off point into Featured Work. */
+    margin-top: auto;
+    padding-top: clamp(20px, 5vh, 56px);
+}
+
+.scroll-cue-text {
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    animation: scroll-bob 2.5s infinite;
+}
+
+/* Held off the label so the pair reads as a word and a marker, not one string. */
+.scroll-cue-arrow {
+    display: inline-block;
+    margin-left: 0.65em;
+}
+
+@keyframes scroll-bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(5px); }
+}
+
+/* ==========================================================================
+   Featured Work List (Magazine Layout)
+   ========================================================================== */
+/* Full-bleed out of the 780px reading lane, matching antigravity.google's
+   .grid-container: capped at 1744px with 72px gutters, so the content itself
+   maxes out at 1600px. */
+.featured-section {
+    /* Clear air between the fold and the first project — but tightened once
+       the scroll cue moved in below the logos, so the cue reads as a label
+       for the projects rather than floating between the two sections. */
+    padding-top: clamp(56px, 9vh, 120px);
+    padding-bottom: var(--space-xxl);
+    width: auto;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding-left: 72px;
+    padding-right: 72px;
+}
+
+.projects-list {
+    max-width: 1600px;
+    margin-left: auto;
+    margin-right: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xl);
+}
+
+/* Copy left, media right — following antigravity.google's .feature-item:
+   a flex row, vertically centred, text column to media column ~390:537
+   (1 : 1.38), media in a heavily rounded, clipped box. */
+/* Their row is a 12-column grid: copy spans 4, media spans 6, with 2 columns
+   of space between (measured 555 / 832 inside a 1664px row). A 16.667% gap
+   is those 2 columns; the remaining 83.333% splits 4:6 into exactly 4/12
+   and 6/12. */
+.project-card {
+    display: grid;
+    grid-template-columns: 4fr 6fr;
+    column-gap: 16.667%;
+    align-items: center;
+    cursor: pointer;
+}
+
+/* Their .feature-copy is a 24px-gap stack. */
+.project-copy {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    align-items: flex-start;
+}
+
+/* Reference values used directly now that the copy column matches theirs
+   (533px here at the 1600px cap, against their 555px). */
+.project-title {
+    font-size: 2.625rem;       /* 42px */
+    font-weight: 450;
+    line-height: 1.04;
+    letter-spacing: -0.01em;
+    color: var(--color-text);
+}
+
+.project-description {
+    font-size: 1.09375rem;     /* 17.5px */
+    line-height: 1.45;
+    font-weight: 300;
+    color: var(--color-text-muted);
+}
+
+.project-meta {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    display: flex;
+    gap: var(--space-xs);
+}
+
+/* Stack on mobile; 72px gutters are too much at this width. */
+@media (max-width: 768px) {
+    .project-card {
+        grid-template-columns: 1fr;
+        column-gap: 0;
+        row-gap: var(--space-md);
+    }
+
+    .featured-section {
+        padding-left: var(--space-md);
+        padding-right: var(--space-md);
+    }
+}
+
+.meta-separator {
+    color: var(--color-text-light);
+}
+
+.project-thumbnail-wrapper {
+    position: relative;
+    width: 100%;
+    /* Landscape, matching the size in the supplied screenshot (~395x256,
+       1.54:1). Antigravity's own media is square, but a square box here makes
+       each card ~800px tall at wide viewports. Note the source art is square
+       (1024x1024), so `cover` crops it top and bottom — see .project-thumbnail. */
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+    border-radius: 36px;          /* reference .feature-item media box */
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg-card);
+}
+
+.project-thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: var(--transition-ease);
+}
+
+/* The hover overlay was removed with the card restructure; the media just
+   lifts slightly and the CTA underline brightens instead. */
+.project-card:hover .project-thumbnail {
+    transform: scale(1.02);
+}
+
+/* ==========================================================================
+   Case Study Editorial View
+   ========================================================================== */
+.back-to-home-btn {
+    background-color: transparent;
+    border: none;
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+    cursor: pointer;
+    font-weight: 500;
+    padding: var(--space-sm) 0;
+    margin-bottom: var(--space-md);
+    transition: var(--transition-fast);
+    display: inline-block;
+}
+
+.back-to-home-btn:hover {
+    color: var(--color-text);
+}
+
+.case-study-editorial {
+    padding-bottom: var(--space-xxl);
+}
+
+.cs-hdr {
+    margin-bottom: var(--space-lg);
+}
+
+.cs-num {
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: var(--color-text-light);
+    display: block;
+    margin-bottom: var(--space-xxs);
+}
+
+.cs-title {
+    font-size: 2.75rem;
+    font-weight: 600;
+    margin-bottom: var(--space-xxs);
+}
+
+.cs-subtitle {
+    font-size: 1.25rem;
+    color: var(--color-text-muted);
+    font-weight: 300;
+}
+
+/* ---- Character reveal -------------------------------------------------
+   Text marked [data-text-reveal] is split by initTextReveal() into words
+   (kept unbreakable) of individual characters, each fading in on a short
+   stagger. The stagger is smaller than the fade, so ~a dozen characters
+   are mid-fade at once and the reveal reads as a soft edge sweeping the
+   line rather than a hard letter-by-letter typewriter.
+
+   Splitting only happens once the script runs, so unstyled or scripted-off
+   text stays exactly as authored — the chars simply never appear. */
+.reveal-word {
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.reveal-char {
+    display: inline-block;
+    opacity: 0;
+    will-change: opacity;
+}
+
+.reveal-char.is-revealed {
+    opacity: 1;
+    transition: opacity 140ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .reveal-char {
+        opacity: 1;
+        transition: none;
+    }
+}
+
+.cs-large-media {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+    border-radius: var(--border-radius-large);
+    border: 1px solid var(--color-border);
+    margin-bottom: var(--space-lg);
+}
+
+.cs-banner-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.cs-content-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+.cs-block {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.cs-block-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-label);
+}
+
+.cs-block-text {
+    font-size: 1.125rem;
+    line-height: 1.65;
+    color: var(--color-text-muted);
+    font-weight: 300;
+}
+
+.cs-quote-block {
+    margin: var(--space-sm) 0;
+    border-left: 2px solid var(--color-accent);
+    padding-left: var(--space-md);
+}
+
+.cs-quote {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 2.25rem;
+    line-height: 1.2;
+    color: var(--color-text);
+}
+
+/* ==========================================================================
+   Info / Biography Page Layout
+   ========================================================================== */
+/* Info view only: the content column matches the nav capsule's 600px measure
+   rather than the 780px reading lane, so everything lines up under the nav. */
+#info-view {
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.info-portrait-section {
+    width: 100%;
+    margin-bottom: var(--space-lg);
+    /* Gap below the fixed nav, scaled from the reference rather than copied
+       in absolute pixels: its content column is 870px wide to this one's 600
+       (a 0.69 factor, confirmed by its 345px-tall portrait vs this 240px one),
+       so its 155px gap becomes ~107px here. The section already sits 24px
+       below the nav's underside via body's padding-top. */
+    margin-top: 84px;
+}
+
+.portrait-container {
+    width: 100%;
+    /* Reference portrait measures 870x345 -> ~2.5:1, a wider letterbox than
+       the 16/9 this used to be. */
+    aspect-ratio: 5 / 2;
+    border-radius: var(--border-radius-large);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+}
+
+.info-portrait-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* The source is a 3:4 portrait in a wider letterbox, so cover shows only
+       a horizontal band of it; 50% centres that band on the face. A ratio, so
+       the framing holds at every viewport width. */
+    object-position: 50% 50%;
+}
+
+.info-intro-section {
+    margin-bottom: var(--space-lg);
+}
+
+.info-intro-headline {
+    font-family: var(--font-serif);
+    font-style: italic;
+    /* 3.5rem, not 4rem: in the 600px column the Latin "Namasté" needs 616px at
+       4rem and wraps to a second line, while the shorter Indic words fit on
+       one — a 71px jump on every swap. At 3.5rem the widest state measures
+       539px, leaving 61px of headroom, so all three stay on one line. */
+    font-size: 3.5rem;
+    font-weight: 400;
+    line-height: 1.1;
+    color: var(--color-text);
+}
+
+.info-details-section {
+    margin-bottom: var(--space-xl);
+}
+
+.info-two-col {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: var(--space-lg);
+    margin-bottom: var(--space-lg);
+    /* start, not stretch — a stretched column fills the row and sticky has
+       no slack to travel in. */
+    align-items: start;
+}
+
+/* Pinned while the taller timeline column scrolls past it, as on
+   harrisonwheeler.com (.belief-text is position: sticky; top: 120px).
+   120px clears the floating nav capsule. */
+.info-left-col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    position: sticky;
+    top: 120px;
+}
+
+/* Sticky needs no clipping ancestor between it and the scroll container. */
+.info-details-section {
+    overflow: visible;
+}
+
+/* The single vertical rule between the columns. align-self: stretch makes
+   this column fill the row, so the rule runs the full height of the section
+   rather than stopping at the last entry. */
+.info-right-col {
+    align-self: stretch;
+    border-left: 1px solid var(--color-border);
+    padding-left: var(--space-md);
+}
+
+@media (max-width: 768px) {
+    /* Single column: the rule would divide nothing. */
+    .info-right-col {
+        border-left: 0;
+        padding-left: 0;
+    }
+}
+
+@media (max-width: 768px) {
+    /* Single column on mobile — nothing to pin against. */
+    .info-left-col {
+        position: static;
+        top: auto;
+    }
+}
+
+.bio-paragraph {
+    font-size: 1.05rem;
+    line-height: 1.65;
+    color: var(--color-text-muted);
+    font-weight: 300;
+}
+
+/* ==========================================================================
+   Resume Timeline — year-grouped, following harrisonwheeler.com
+   ========================================================================== */
+/* Text-only entries in a plain stack. The single vertical rule that separates
+   the columns is a border on this column (see .info-right-col), not a rail
+   with dots. */
+.resume-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.timeline-item {
+    display: block;
+    text-align: left;
+
+    /* Scroll reveal. */
+    opacity: 0;
+    transform: translateY(48px);
+    transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.timeline-item.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Wider than the reference's 56px square so the full wordmark reads.
+   Light chip because every supplied logo has a white/solid background. */
+/* Square 56x56 tiles, matching the reference, now that the logos are square
+   icons. No padding: the brand icons carry their own background and should
+   fill the tile edge to edge. */
+.timeline-logo {
+    width: 56px;
+    height: 56px;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 0;
+    border-radius: var(--border-radius-small);
+    background: #ffffff;
+    border: 1px solid var(--color-border);
+}
+
+/* contain rather than the reference's cover: three of the four icons are
+   perfectly square and fill it either way, but the NID mark is wider than it
+   is tall and cover would clip its edges. On the white tile the letterboxing
+   it leaves is invisible. */
+.timeline-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+/* Shown only when the image is missing (see the onerror hook in the markup). */
+.timeline-logo[data-fallback]::after {
+    content: attr(data-fallback);
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #12131a;
+}
+
+/* Company, role and dates share one size and rhythm; only colour separates
+   them, as in the reference. */
+.timeline-item strong {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--color-text);
+}
+
+.timeline-item em {
+    display: block;
+    font-style: normal;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--color-text-muted);
+}
+
+.timeline-dates {
+    display: block;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--color-text-light);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .timeline-item {
+        transform: none;
+        transition: opacity 0.2s linear;
+    }
+    .timeline-item.visible { transform: none; }
+}
+
+/* Call-To-Action Row */
+/* Pill + circular icon buttons, following the reference's CTA row.
+   Both share a 52px height so they line up on one baseline. */
+.cta-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding-top: var(--space-md);
+    flex-wrap: wrap;
+}
+
+.cta-pink-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    height: 52px;
+    padding: 0 var(--space-md);
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    /* amicro btn-32 uses font-medium + tracking-tight. */
+    font-weight: 500;
+    letter-spacing: -0.025em;
+    border-radius: var(--border-radius-pill);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.cta-pink-btn:hover {
+    transform: translateY(-2px);
+}
+
+/* Feedback on the press, not the release. */
+.cta-pink-btn:active {
+    transform: translateY(-2px) scale(0.97);
+    transition: transform 100ms ease-out;
+}
+
+/* ==========================================================================
+   Liquid Glass — Apple's button material, per the published spec
+
+   The spec builds the button as a stack rather than a fill: an isolated
+   container, a Fill+Shadow layer and a Glass Effect layer sharing z-index 0,
+   and the label above them at z-index 1 blending into what it sits on.
+   `isolation: isolate` is what keeps that blend inside the button instead of
+   reaching the page behind it.
+
+   Two recipes, one per background context — which maps exactly onto this
+   site's two themes. The blend stacks are the spec's own; the only addition is
+   backdrop-filter on the Glass Effect layer, because a Figma export cannot
+   carry the refraction that makes the material read as glass on screen.
+   ========================================================================== */
+:root {
+    /* Over a dark background context */
+    --lg-fill:
+        linear-gradient(0deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.06)),
+        linear-gradient(0deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)),
+        rgba(204, 204, 204, 0.5);
+    --lg-fill-blend: normal, normal, color-burn;
+    --lg-fill-opacity: 0.67;
+    --lg-effect-bg: rgba(0, 0, 0, 0.2);
+    --lg-label: #F5F5F5;
+    --lg-label-blend: plus-lighter;
+}
+
+html.light {
+    /* Over a light background context */
+    --lg-fill:
+        linear-gradient(0deg, #F7F7F7, #F7F7F7),
+        linear-gradient(0deg, #DDDDDD, #DDDDDD),
+        rgba(255, 255, 255, 0.65);
+    --lg-fill-blend: darken, color-burn, normal;
+    --lg-fill-opacity: 1;
+    --lg-effect-bg: transparent;
+    --lg-label: #1A1A1A;
+    --lg-label-blend: plus-darker;
+}
+
+.cta-pink-btn,
+.cta-icon-btn {
+    position: relative;
+    isolation: isolate;
+    border: none;
+    background: none;
+    box-shadow: none;
+    color: var(--lg-label);
+}
+
+/* Fill + Shadow */
+.cta-pink-btn::before,
+.cta-icon-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    background: var(--lg-fill);
+    background-blend-mode: var(--lg-fill-blend);
+    opacity: var(--lg-fill-opacity);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.12);
+    transition: opacity 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Glass Effect */
+.cta-pink-btn::after,
+.cta-icon-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    background: var(--lg-effect-bg);
+    background-blend-mode: screen;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    pointer-events: none;
+}
+
+/* The label sits above the stack and blends into it — plus-lighter over the
+   dark recipe, plus-darker over the light one. A browser without those modes
+   drops the declaration and still renders the colour set above, so nothing
+   depends on them. */
+.cta-pink-btn > *,
+.cta-icon-btn > * {
+    position: relative;
+    z-index: 1;
+    mix-blend-mode: var(--lg-label-blend);
+}
+
+.cta-pink-btn:hover::before,
+.cta-icon-btn:hover::before {
+    opacity: calc(var(--lg-fill-opacity) + 0.12);
+    box-shadow: 0 10px 44px rgba(0, 0, 0, 0.2);
+}
+
+/* Translucency turned down: a flat, opaque pill and no refraction. */
+@media (prefers-reduced-transparency: reduce) {
+    .cta-pink-btn::before,
+    .cta-icon-btn::before {
+        background: var(--color-bg-card);
+        opacity: 1;
+    }
+
+    .cta-pink-btn::after,
+    .cta-icon-btn::after {
+        background: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
+    .cta-pink-btn > *,
+    .cta-icon-btn > * {
+        mix-blend-mode: normal;
+        color: var(--color-text);
+    }
+}
+
+/* Higher contrast: solid, with a border defining the edge, and no blending
+   between label and surface. */
+@media (prefers-contrast: more) {
+    .cta-pink-btn::before,
+    .cta-icon-btn::before {
+        background: var(--color-bg-card);
+        opacity: 1;
+        border: 1px solid var(--color-text);
+        border-radius: inherit;
+    }
+
+    .cta-pink-btn::after,
+    .cta-icon-btn::after {
+        background: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
+    .cta-pink-btn > *,
+    .cta-icon-btn > * {
+        mix-blend-mode: normal;
+        color: var(--color-text);
+    }
+}
+
+/* ---- amicro btn-32 "Text Reveal" ----------------------------------------
+   Source: interactionType 'text-reveal' in AnimatedButton.tsx. The label sits
+   in a clipped window over a duplicate of itself; on hover the pair slides up
+   by exactly one line so the copy takes its place, while the arrow turns 45deg.
+   Motion's spring(stiffness 400, damping 25) is ~zeta 0.63 / omega 20rad/s —
+   about 0.34s with a little overshoot, which this bezier approximates. */
+.cta-btn-label {
+    display: inline-block;
+    height: 1.4em;
+    overflow: hidden;
+}
+
+.cta-btn-label-track {
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.34s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cta-btn-label-track > span {
+    display: block;
+    height: 1.4em;
+    line-height: 1.4em;
+    white-space: nowrap;
+}
+
+.cta-pink-btn:hover .cta-btn-label-track,
+.cta-pink-btn:focus-visible .cta-btn-label-track {
+    transform: translateY(-1.4em);
+}
+
+.cta-arrow {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    transition: transform 0.34s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cta-pink-btn:hover .cta-arrow,
+.cta-pink-btn:focus-visible .cta-arrow {
+    transform: rotate(45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cta-btn-label-track,
+    .cta-arrow {
+        transition: none;
+    }
+    .cta-pink-btn:hover .cta-btn-label-track,
+    .cta-pink-btn:focus-visible .cta-btn-label-track {
+        transform: none;
+    }
+}
+
+.cta-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    transition: var(--transition-fast);
+}
+
+.cta-icon-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Painted, not placed. Each mark is a mask cut from its own vector and filled
+   with currentColor, so it takes the pill's label colour and follows the theme
+   on its own — one file per mark instead of a light/dark pair, and no way for
+   either to come out invisible against its own surface. That is what the
+   LinkedIn pair was getting wrong in light mode.
+
+   The Behance artwork was exported into an 800-square artboard while its glyph
+   occupies only 362x229 of it, so `contain` was fitting all that empty margin
+   and drawing the mark at under half its box. behance.svg is the same artwork
+   with the viewBox cropped to the glyph, which is where the size comes from —
+   the box below only had to grow a little after that. */
+.cta-icon-mark {
+    background-color: currentColor;
+    -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+            mask-position: center;
+    -webkit-mask-size: contain;
+            mask-size: contain;
+    /* Out of the pill's label blend: plus-lighter would add a filled mark onto
+       the surface underneath and blow it out. */
+    mix-blend-mode: normal;
+}
+
+.cta-icon-mark[data-mark="linkedin"] {
+    width: 20px;
+    height: 20px;
+    -webkit-mask-image: url("assets/Logos/linkedin.svg");
+            mask-image: url("assets/Logos/linkedin.svg");
+}
+
+/* Wider than it is tall, so it takes a wider box to read at the same weight
+   as the square "in" beside it. */
+.cta-icon-mark[data-mark="behance"] {
+    width: 26px;
+    height: 26px;
+    -webkit-mask-image: url("assets/Logos/behance.svg");
+            mask-image: url("assets/Logos/behance.svg");
+}
+
+.cta-icon-btn:hover {
+    transform: translateY(-2px);
+}
+
+.cta-icon-btn:active {
+    transform: translateY(-2px) scale(0.94);
+    transition: transform 100ms ease-out;
+}
+/* ==========================================================================
+   Personal Gallery — infinite marquee
+
+   Geometry is the reference's, measured on manujtewari.com/about: a fixed
+   320px row height, images 244px (portrait) or 488px (landscape) wide, 24px
+   apart, 20px corners, object-fit: cover.
+
+   The loop works by holding two identical runs side by side and translating
+   the track left by exactly one run's width. At that point the second run sits
+   precisely where the first began, so restarting the animation is invisible.
+   The distance is `-50%` of the track rather than a pixel figure, which keeps
+   it correct no matter how many images are added or how wide they are.
+   ========================================================================== */
+.personal-gallery-section {
+    padding-top: var(--space-lg);
+    padding-bottom: var(--space-xl);
+}
+
+.gallery-section-title {
+    /* Google Sans Flex, matching the home headline, rather than the Instrument
+       Serif italic this used to carry. Size and weight stay as they were —
+       only the face changes. */
+    font-family: var(--font-sans);
+    font-style: normal;
+    font-size: 2rem;
+    font-weight: 400;
+    line-height: 1.1;
+    margin-bottom: var(--space-md);
+    color: var(--color-text);
+}
+
+/* Full-bleed: the strip runs past both page edges the way the reference's
+   does, while the heading above stays in the reading lane. */
+.gallery-marquee {
+    margin-inline: calc(50% - 50vw);
+    width: auto;
+    overflow: hidden;
+}
+
+.gallery-track {
+    display: flex;
+    width: max-content;
+    /* Paused until the script has cloned the run — a single run would loop
+       with a visible jump back to the start. */
+    animation: gallery-marquee 60s linear infinite;
+    animation-play-state: paused;
+}
+
+.gallery-track.is-running {
+    animation-play-state: running;
+}
+
+@keyframes gallery-marquee {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-50%, 0, 0); }
+}
+
+.gallery-run {
+    display: flex;
+    gap: 24px;
+    /* The gap after the last image of a run, so the seam spaces like every
+       other join rather than butting the two runs together. */
+    padding-right: 24px;
+    margin: 0;
+    list-style: none;
+    flex: 0 0 auto;
+}
+
+.gallery-item {
+    flex: 0 0 auto;
+    height: 320px;
+    border-radius: 20px;
+    overflow: hidden;
+    background-color: var(--color-bg-card);
+}
+
+.gallery-item--portrait { width: 244px; }
+.gallery-item--landscape { width: 488px; }
+
+.gallery-item img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+}
+
+@media (max-width: 700px) {
+    .gallery-item { height: 220px; }
+    .gallery-item--portrait { width: 168px; }
+    .gallery-item--landscape { width: 336px; }
+    .gallery-run { gap: 16px; padding-right: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    /* Motion off, but the strip must stay reachable — hand it back to the
+       user as an ordinary horizontal scroller. */
+    .gallery-track { animation: none; }
+    .gallery-marquee {
+        overflow-x: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-border) transparent;
+    }
+}
+
+/* ==========================================================================
+   Footer Layout
+   ========================================================================== */
+.footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: var(--space-xl) 0 var(--space-lg) 0;
+    border-top: 1px solid var(--color-border);
+    margin-top: var(--space-lg);
+}
+
+.footer-left {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.footer-note {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+}
+
+.footer-subtext {
+    font-size: 0.85rem;
+    color: var(--color-text-light);
+    margin-bottom: var(--space-sm);
+}
+
+.footer-email {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 2.5rem;
+    font-weight: 400;
+    color: var(--color-text);
+    line-height: 1.1;
+    border-bottom: 1px solid transparent;
+    transition: var(--transition-fast);
+}
+
+.footer-email:hover {
+    color: var(--color-accent);
+    border-bottom-color: var(--color-accent);
+}
+
+.footer-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--space-xxs);
+}
+
+.footer-social-link {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    transition: var(--transition-fast);
+}
+
+.footer-social-link:hover {
+    color: var(--color-text);
+}
+
+/* ==========================================================================
+   Resume View (Scrollable PDF)
+   ========================================================================== */
+.resume-section {
+    padding: var(--space-xl) 0;
+}
+
+.resume-title {
+    font-size: 3rem;
+    font-weight: 300;
+    line-height: 1.1;
+    margin-bottom: var(--space-sm);
+    font-family: 'Instrument Serif', serif;
+    text-transform: capitalize;
+}
+
+.resume-subtitle {
+    font-size: 1rem;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-lg);
+}
+
+.resume-viewer-container {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-large);
+    overflow: hidden;
+    margin-bottom: var(--space-lg);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.resume-viewer {
+    width: 100%;
+    height: 900px;
+    border: none;
+}
+
+.resume-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: var(--color-bg);
+}
+
+.resume-actions {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-md);
+}
+
+.resume-actions .cta-pink-btn {
+    font-size: 1rem;
+    padding: var(--space-sm) var(--space-lg);
+}
+
+/* ==========================================================================
+   Modal Overlay (Resume Viewer) - DEPRECATED
+   ========================================================================== */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(8, 16, 24, 0.85);
+    backdrop-filter: blur(8px);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    opacity: 0;
+    transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-overlay.active {
+    display: flex;
+    opacity: 1;
+}
+
+.modal-box {
+    background-color: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-large);
+    width: 90%;
+    max-width: 550px;
+    padding: var(--space-lg);
+    position: relative;
+    transform: translateY(20px);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-overlay.active .modal-box {
+    transform: translateY(0);
+}
+
+.close-modal-btn {
+    position: absolute;
+    top: var(--space-sm);
+    right: var(--space-sm);
+    background: transparent;
+    border: none;
+    color: var(--color-text-light);
+    font-size: 2rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.close-modal-btn:hover {
+    color: var(--color-text);
+}
+
+/* ==========================================================================
+   Responsive Adaptability (Mobile Layouts)
+   ========================================================================== */
+/* antigravity.google steps the headline down at this breakpoint; scaled to
+   match the reduced desktop size. */
+@media (max-width: 1024px) {
+    .hero-headline {
+        font-size: 2.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    :root {
+        --space-lg: 32px;
+        --space-xl: 64px;
+        --space-xxl: 96px;
+    }
+    
+    body {
+        padding-top: 24px;
+        padding-bottom: 112px;
+    }
+    
+    .nav-capsule {
+        height: 56px;
+    }
+    
+    .nav-designer-name {
+        display: none; /* Hide name to save space on narrow devices */
+    }
+    
+    .hero-headline {
+        font-size: 2rem;
+    }
+
+    .info-intro-headline {
+        font-size: 2.5rem;
+    }
+    
+    .info-two-col {
+        grid-template-columns: 1fr;
+        gap: var(--space-md);
+    }
+    
+    .cta-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-sm);
+    }
+    
+    .footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-md);
+    }
+    
+    .footer-right {
+        align-items: flex-start;
+    }
+    
+    .footer-email {
+        font-size: 1.75rem;
+    }
+
+    .resume-iframe {
+        height: 600px;
+    }
+}
+
+/* ==========================================================================
+   ThreeUI — PredictiveArcCanvas, variant "signal-particles" (mode: dark)
+   Scoped to the home hero only.
+   ========================================================================== */
+.hero-section > .threeui-background {
+    position: absolute;
+    /* Reaches up through the body's 120px nav pad to the very top of the
+       viewport, so the field runs behind the nav capsule as well. */
+    top: -120px;
+    /* Full-bleed: break out of the 780px .reading-lane to span the viewport.
+       body already sets overflow-x: hidden, so 100vw cannot add a scrollbar. */
+    left: 50%;
+    width: 100vw;
+    transform: translateX(-50%);
+    height: calc(100% + 120px);
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    /* No top fade — the field is meant to reach the nav — and the bottom one
+       only covers the last stretch below the client logos, purely so the
+       field does not hard-cut into the section beneath it. */
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 96%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 96%, transparent 100%);
+}
+
+.hero-section > .threeui-background > #particle-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    /* Full strength: the antigravity palette is tuned to sit on the page
+       background as-is, unlike the field this replaced. */
+    opacity: 1;
+}
+
+/* Keep hero content above the particle field. */
+.hero-section > .hero-headline,
+.hero-section > .hero-description,
+.hero-section > .social-proof-row,
+.hero-section > .scroll-cue {
+    position: relative;
+    z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hero-section > .threeui-background { opacity: 0.5; }
+}
+
+/* ==========================================================================
+   Auto-hiding Navigation Capsule
+
+   Direction-driven: gone on the way down, back on the way up. The two
+   directions get different curves, because they are doing different things.
+
+   Each transition is declared on the state being ENTERED, which is what lets
+   them differ. Leaving, the capsule draws in on itself and lifts away on an
+   accelerating curve — quick, and out of the way. Returning, it runs longer
+   on a decelerating curve and expands from 0.86 back to full, so it reads as
+   arriving rather than as a panel sliding down.
+
+   transform-origin sits at the bottom so the scale collapses toward the edge it
+   exits through instead of shrinking about its middle.
+   ========================================================================== */
+.nav-capsule-wrapper {
+    /* Entering the visible state — the expand. Longer than the exit, and
+       decelerating, so the last few pixels settle rather than stop dead. */
+    transition: transform 0.62s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.34s cubic-bezier(0.16, 1, 0.3, 1);
+    transform-origin: 50% 100%;
+    /* transform only. will-change: opacity makes this wrapper a backdrop root,
+       so the capsule's backdrop-filter samples nothing and the page shows
+       through unblurred behind the links. */
+    will-change: transform;
+}
+
+.nav-capsule-wrapper.nav-hidden {
+    /* Entering the hidden state — the collapse. Accelerating, and the opacity
+       is held back a little so the capsule is still visible while it draws
+       in, rather than vanishing before the motion reads. */
+    transition: transform 0.42s cubic-bezier(0.6, 0.04, 0.98, 0.34),
+                opacity 0.3s cubic-bezier(0.7, 0, 0.84, 0) 0.04s;
+    transform: translateY(calc(100% + 32px)) scale(0.86);
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Materialize rather than fade: on exit the blur collapses and the surface
+   shrinks together, so the glass reads as dissolving instead of dimming.
+   On return, both ramp back up and it reads as a material arriving. */
+.nav-capsule-wrapper.nav-hidden .nav-capsule {
+    pointer-events: none;
+    transition: backdrop-filter 0.34s ease-in,
+                -webkit-backdrop-filter 0.34s ease-in,
+                box-shadow 0.3s ease;
+    backdrop-filter: blur(0px) saturate(100%);
+    -webkit-backdrop-filter: blur(0px) saturate(100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .nav-capsule-wrapper { transition: opacity 0.2s linear; }
+    .nav-capsule-wrapper.nav-hidden { transition: opacity 0.2s linear; transform: none; }
+    .nav-capsule,
+    .nav-capsule-wrapper.nav-hidden .nav-capsule { transition: opacity 0.2s linear; transform: none; }
+}
+
+/* Frostier and solid when transparency is unwanted — drop the blur, raise the fill. */
+@media (prefers-reduced-transparency: reduce) {
+    .nav-capsule {
+        background: var(--color-bg-card);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+    .nav-capsule::before { display: none; }
+    .nav-capsule-wrapper.nav-hidden .nav-capsule {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+}
+
+/* Near-solid with a defined border when more contrast is requested. */
+@media (prefers-contrast: more) {
+    .nav-capsule {
+        background: #0a121c;
+        border-color: rgba(255, 255, 255, 0.45);
+    }
+    .nav-pill-link { color: rgba(255, 255, 255, 0.92); }
+}
+
+/* ==========================================================================
+   Alternating "Namasté" — Latin <-> Devanagari
+   ========================================================================== */
+.namaste-roll {
+    /* inline-flex, not inline-block: a flex container discards the
+       whitespace-only text nodes between its children, which would otherwise
+       render as a stray space before the comma that follows. */
+    display: inline-flex;
+    align-items: baseline;
+    /* No overflow clipping — the pop-in blurs outward and a clip would cut the
+       halo off. Width is animated by initNamasteRoll() so the comma after it
+       slides rather than jumping when the word changes length. */
+    transition: width 0.5s cubic-bezier(0.34, 1.45, 0.64, 1);
+    will-change: width;
+
+    /* Hold the heading's height constant across both scripts.
+
+       The Noto faces sit differently against the baseline than Instrument
+       Serif, so with default baseline alignment the heading's line box grew
+       with the script (70px Latin -> 83px Devanagari) and pushed every section
+       below it down by 12px on each swap. A fixed height with top alignment
+       makes this box's contribution to the line identical whatever is inside.
+
+       No baseline nudge here: this used to carry top: 0.094em, which pushed
+       the greeting 3.75px below ", I am Nirali Amin". With the box top-aligned
+       the Latin word already lands on the surrounding baseline on its own; the
+       two Noto faces are brought to it by the size and line-height pair on
+       their own rules below. */
+    height: 1.1em;              /* matches .info-intro-headline's line-height */
+    vertical-align: top;
+}
+/* Baseline reference. A zero-width Latin character in the heading's own face
+   sits at the top of the roll, exactly where the Latin word does, so its
+   baseline is the line's baseline. align-items: baseline above then pulls the
+   Devanagari word down onto it, whatever the two faces' metrics are. */
+.namaste-roll::before {
+    content: "\200B";
+}
+/* Instrument Serif carries no Devanagari glyphs, and Noto has no true italic —
+   so the Devanagari word renders upright by design.
+
+   font-size 0.86: at a 40px heading, "Namasté" in Instrument Serif inks 30px
+   above the baseline and 0 below, while नमस्ते inks 36px above and 1px below.
+   Same nominal size, but the Noto faces draw 20% taller, so at 1em they read
+   as larger.
+
+   No vertical nudge: the baseline is set by .namaste-roll::before. The old
+   hand-tuned top: 0.10em left the word 8px above the line at 40px. */
+.t-digit-group[lang="hi"] {
+    font-family: "Noto Serif Devanagari", var(--font-serif);
+    font-style: normal;
+    font-size: 0.86em;
+}
+
+/* Visually hidden, still read aloud. */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .namaste-roll {
+        transition: none;
+    }
+}
+
+/* ==========================================================================
+   Transitions.dev — Number pop-in
+   Applied to the Namasté greeting. Keyframes, tokens and class names are as
+   supplied; the only addition is --digit-index, so the stagger can run past
+   the two levels the original hardcodes (see initNamasteRoll).
+   ========================================================================== */
+:root {
+  --digit-dur: 500ms;
+  --digit-distance: 10px;
+  /* Fallback only. initNamasteRoll() overrides this per word so both scripts
+     sweep across in the same time — see the note there. */
+  --digit-stagger: 70ms;
+  --digit-blur: 2px;
+  --digit-ease: cubic-bezier(0.34, 1.45, 0.64, 1);
+  /* Each glyph arrives from its left, and the stagger runs first to last, so
+     the word reveals across rather than rising into place. */
+  --digit-dir-x: -1;
+  --digit-dir-y: 0;
+}
+
+@keyframes t-digit-pop-in {
+  0%   {
+    transform: translate(
+      calc(var(--digit-distance) * var(--digit-dir-x)),
+      calc(var(--digit-distance) * var(--digit-dir-y))
+    );
+    opacity: 0;
+    filter: blur(var(--digit-blur));
+  }
+  100% { transform: translate(0, 0); opacity: 1; filter: blur(0); }
+}
+
+.t-digit-group {
+  display: inline-flex;
+  align-items: baseline;
+  /* As a flex item of .namaste-roll it would otherwise shrink to the roll's
+     animating width; pin it so it always takes its natural measure. */
+  flex: 0 0 auto;
+}
+.t-digit {
+  display: inline-block;
+  will-change: transform, opacity, filter;
+}
+.t-digit-group.is-animating .t-digit {
+  animation: t-digit-pop-in var(--digit-dur) var(--digit-ease) both;
+  /* Generalised stagger: the words run to 7 clusters, past the original's
+     hardcoded levels. The two rules below still work for data-stagger usage. */
+  animation-delay: calc(var(--digit-stagger) * var(--digit-index, 0));
+}
+.t-digit-group.is-animating .t-digit[data-stagger="1"] {
+  animation-delay: var(--digit-stagger);
+}
+.t-digit-group.is-animating .t-digit[data-stagger="2"] {
+  animation-delay: calc(var(--digit-stagger) * 2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-digit-group .t-digit { animation: none !important; }
+}
+
+/* ==========================================================================
+   Project media cursor pill — following antigravity.google's .custom-cursor
+
+   A pill that tracks the pointer inside the image and scales in on enter.
+   Their structure nests a positioned outer element inside an overflow-hidden
+   wrapper, with the pill itself as a child; position updates carry no
+   transition (transition-duration reads 0s there) while the scale/fade is
+   animated, so the follow stays instant and only the entrance eases.
+   ========================================================================== */
+.project-cursor-wrapper {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;      /* must not swallow the card's click */
+    overflow: hidden;          /* clips the pill to the rounded image */
+    border-radius: inherit;
+}
+
+.project-cursor {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    will-change: transform;    /* position only — no transition, instant follow */
+}
+
+.project-cursor-content {
+    position: relative;
+    isolation: isolate;        /* keeps the label's blend inside the pill */
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    /* Reference padding: 16px 24px 16px 16px — tighter on the icon side. */
+    padding: var(--space-sm) var(--space-md) var(--space-sm) var(--space-sm);
+    border-radius: 999px;
+    white-space: nowrap;
+    font-size: 0.95rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+
+    /* The Liquid Glass spec picks its recipe from what sits *behind* the
+       button, and behind this one is cover art — saturated and mid-to-bright
+       on every project — not the page. So it takes the light-context recipe in
+       both themes rather than following the theme like the CTA row does; a
+       dark pill would sink into the artwork it is meant to float over. */
+    color: #1A1A1A;
+
+    /* Centred on the pointer, scaled from nothing. */
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+    transition: opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Fill + Shadow, plus the lift.
+
+   The white does two separate jobs here. A hairline ring traces the pill's
+   edge so it never dissolves into a light passage of the artwork, and a soft
+   white halo sits around it — light spilling onto the surface below, which is
+   what actually reads as height. Under both, an ordinary dark shadow gives the
+   drop. */
+.project-cursor-content::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    background:
+        linear-gradient(0deg, #F7F7F7, #F7F7F7),
+        linear-gradient(0deg, #DDDDDD, #DDDDDD),
+        rgba(255, 255, 255, 0.65);
+    background-blend-mode: darken, color-burn, normal;
+    box-shadow:
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.95),   /* specular rim */
+        0 0 0 1px rgba(255, 255, 255, 0.38),         /* hairline ring */
+        0 0 20px 2px rgba(255, 255, 255, 0.22),      /* white halo */
+        0 8px 40px rgba(0, 0, 0, 0.12),
+        0 12px 28px rgba(0, 0, 0, 0.26);
+}
+
+/* Glass Effect. The refraction is part of the entrance — radius and scale
+   arrive on the same curve, so the pill materialises rather than fading up. */
+.project-cursor-content::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    background-blend-mode: screen;
+    backdrop-filter: blur(0px) saturate(100%);
+    -webkit-backdrop-filter: blur(0px) saturate(100%);
+    transition: backdrop-filter 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+                -webkit-backdrop-filter 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+}
+
+/* Label above the stack, blending into it. plus-darker is Safari-only; where
+   it is unsupported the colour set above still carries the label. */
+.project-cursor-content > * {
+    position: relative;
+    z-index: 1;
+    mix-blend-mode: plus-darker;
+}
+
+.project-thumbnail-wrapper:hover .project-cursor-content {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.project-thumbnail-wrapper:hover .project-cursor-content::after {
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+.project-cursor-icon {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 auto;
+}
+
+/* Hide the system cursor only once JS has built the pill, so a script failure
+   never leaves the image with no cursor at all. */
+.project-thumbnail-wrapper.has-custom-cursor {
+    cursor: none;
+}
+
+/* Pointer-less devices get nothing to follow. */
+@media (hover: none) {
+    .project-cursor-wrapper { display: none; }
+    .project-thumbnail-wrapper.has-custom-cursor { cursor: pointer; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .project-cursor-content { transition: opacity 0.2s linear; }
+    .project-thumbnail-wrapper:hover .project-cursor-content {
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    /* The blur stays; it just stops being part of an entrance. */
+    .project-cursor-content::after,
+    .project-thumbnail-wrapper:hover .project-cursor-content::after {
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        transition: none;
+    }
+}
+
+/* Translucency turned down: an opaque pill, no refraction, and the white lift
+   reduced to a plain edge. */
+@media (prefers-reduced-transparency: reduce) {
+    .project-cursor-content::before {
+        background: #ffffff;
+        background-blend-mode: normal;
+        box-shadow:
+            0 0 0 1px rgba(255, 255, 255, 0.5),
+            0 12px 28px rgba(0, 0, 0, 0.26);
+    }
+
+    .project-cursor-content::after,
+    .project-thumbnail-wrapper:hover .project-cursor-content::after {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
+    .project-cursor-content > * { mix-blend-mode: normal; }
+}
+
+/* Higher contrast: solid, with a dark border so the pill's edge is defined
+   against the artwork on its own. */
+@media (prefers-contrast: more) {
+    .project-cursor-content::before {
+        background: #ffffff;
+        background-blend-mode: normal;
+        box-shadow:
+            0 0 0 2px rgba(18, 24, 43, 0.75),
+            0 12px 28px rgba(0, 0, 0, 0.3);
+    }
+
+    .project-cursor-content::after,
+    .project-thumbnail-wrapper:hover .project-cursor-content::after {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
+    .project-cursor-content > * { mix-blend-mode: normal; }
+}
+
+/* --- Case study: link out to the live Figma library ----------------------
+   The reference's card hover, applied here: the artwork pushes in slightly
+   while a blue stroke draws itself around the frame, and the pill rises over
+   the top of it. The stroke is an outline rather than a border so it appears
+   without shifting the layout by its own width, and it follows the radius.
+
+   The zoom is held inside by overflow on the anchor, so the image grows into
+   the frame instead of past it. Two different durations on purpose: the card
+   lifts quickly, the image behind it drifts, which is what reads as depth
+   rather than as one block scaling.
+   ------------------------------------------------------------------------ */
+.cs-figma-wrap {
+    margin-top: var(--space-xl);
+}
+
+.cs-figma {
+    position: relative;        /* the pill is positioned against this */
+    display: block;
+    overflow: hidden;          /* keeps the zoom inside the frame */
+    border-radius: var(--border-radius-large);
+    border: 1px solid var(--color-border);
+    text-decoration: none;
+    outline: 3px solid transparent;
+    outline-offset: 0;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                outline-color 0.3s ease,
+                border-color 0.3s ease;
+}
+
+.cs-figma img {
+    display: block;
+    width: 100%;
+    height: auto;
+    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cs-figma:hover,
+.cs-figma:focus-visible {
+    transform: translateY(-2px);
+    outline-color: var(--footer-blue);
+    border-color: transparent;   /* the stroke takes over the edge */
+}
+
+.cs-figma:hover img,
+.cs-figma:focus-visible img {
+    transform: scale(1.04);
+}
+
+/* The plain-text way in, under the card. Always present, so the destination is
+   readable without hovering and reachable on a touch device, where the pill
+   never appears. */
+.cs-figma-link {
+    display: inline-block;
+    margin-top: var(--space-sm);
+    font-size: 0.95rem;
+    color: var(--color-text-muted);
+    /* No rule under it: the text carries the link on its own, and brightening
+       on hover is the whole of the feedback. */
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.cs-figma-link:hover,
+.cs-figma-link:focus-visible {
+    color: var(--color-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cs-figma,
+    .cs-figma img {
+        transition: outline-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .cs-figma:hover,
+    .cs-figma:focus-visible,
+    .cs-figma:hover img,
+    .cs-figma:focus-visible img {
+        transform: none;   /* the stroke alone carries the hover */
+    }
+}
+
+/* --- Case study: foundation grid -----------------------------------------
+   The ten foundation covers pulled from the Figma library. Two up on desktop,
+   one up once the column gets too narrow to read a 390px diagram at a useful
+   size. The art is line work on a near-white panel, so it keeps its own light
+   ground in both themes rather than inverting: these are screenshots of the
+   system's documentation, and recolouring them would misrepresent it.
+   ------------------------------------------------------------------------ */
+.cs-foundations {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-lg) var(--space-md);
+    margin-top: var(--space-md);
+    padding: 0;
+}
+
+.cs-foundation img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 12px;
+    background: #ffffff;
+    border: 1px solid var(--color-border);
+}
+
+.cs-foundation-name {
+    margin: var(--space-xs) 0 4px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.cs-foundation-note {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    color: var(--color-text-muted);
+}
+
+@media (max-width: 700px) {
+    .cs-foundations {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* Scroll expansion — see initProjectScrollScale. Origin centre and no
+   transition, matching antigravity.google's .landing-video-section: the scale
+   is written per frame from scroll position, so easing it here would fight it. */
+.project-thumbnail-wrapper {
+    transform-origin: center center;
+    will-change: transform;
+}
+
+/* The closing sentence of the hero sits at full white against the muted
+   body copy, mirroring the reference's highlighted "Currently designing…" line. */
+.hero-emphasis {
+    color: var(--color-text);
+    font-weight: 400;
+}
+
+/* ==========================================================================
+   Footer — following cyze.dev's .site-footer
+
+   Measured there: a 34px-radius panel with overflow:hidden and a vertical
+   gradient; content padded 136px from the top; a centred social row at 51px
+   gaps; and the name set as an absolutely positioned .site-footer-mark at
+   ~202px / weight 600 / line-height 0.85 / -0.04em, hanging below the panel's
+   bottom edge so the panel crops it.
+
+   Their gradient runs light -> vivid blue; here it runs bright blue at the top
+   down into the page's own background, so the panel resolves into the page.
+   ========================================================================== */
+.site-footer-frame {
+    /* Breaks the 780px lane like the hero, matching the reference's
+       full-width frame with generous side gutters. */
+    width: auto;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding: 0 clamp(20px, 6vw, 100px) clamp(40px, 8vh, 102px);
+    max-width: 1440px;
+    margin-top: var(--space-xxl);
+}
+
+/* Muted meta line above the panel. */
+.site-footer-tagline {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    font-size: 0.86rem;
+    color: var(--color-text-light);
+    margin-bottom: var(--space-md);
+}
+
+.site-footer-tagline a {
+    color: inherit;
+    transition: var(--transition-fast);
+}
+
+.site-footer-tagline a:hover {
+    color: var(--color-text-muted);
+}
+
+.site-footer {
+    position: relative;
+    overflow: hidden;          /* crops the oversized name */
+    border-radius: 34px;
+    /* The reference's panel, rebuilt: it climbs to a vivid blue at the rim and
+       comes back down to exactly the colour of the page behind its foot, so
+       the panel dissolves into the page instead of ending on an edge. The
+       stops are the reference's eased ramp — slow at both ends, quicker
+       through the middle — so it reads as depth rather than a flat wash, and
+       it interpolates in oklch to stop the blue going grey on the way down. */
+    background: linear-gradient(
+        to top in oklch,
+        var(--footer-foot) 0%,
+        color-mix(in oklch, var(--footer-blue) 16%, var(--footer-foot)) 25%,
+        color-mix(in oklch, var(--footer-blue) 32%, var(--footer-foot)) 37.5%,
+        color-mix(in oklch, var(--footer-blue) 50%, var(--footer-foot)) 50%,
+        color-mix(in oklch, var(--footer-blue) 68%, var(--footer-foot)) 62.5%,
+        color-mix(in oklch, var(--footer-blue) 84%, var(--footer-foot)) 75%,
+        var(--footer-blue) 100%
+    );
+    /* Tall enough that the mark can hang past the bottom edge. */
+    min-height: 408px;
+
+    /* The dissolve, done as a mask rather than as a veil in the page's colour.
+       The page blend is fixed to the viewport, so the colour sitting behind the
+       panel's foot changes with every scroll position and can never be matched
+       by a constant — painting one over it left a visible rectangle. Fading the
+       panel's own alpha to nothing sidesteps the question: whatever is behind
+       shows through exactly, in either theme, at any scroll offset. It carries
+       the name with it, so the mark still sinks away the way the reference's
+       does, and it clears the links well before it starts. */
+    -webkit-mask-image: linear-gradient(to top, transparent 0%, #000 35%);
+    mask-image: linear-gradient(to top, transparent 0%, #000 35%);
+}
+
+.site-footer-content {
+    position: relative;
+    z-index: 1;
+    padding-top: clamp(72px, 14vh, 136px);
+}
+
+.site-footer-socials {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: clamp(24px, 4vw, 51px);
+    list-style: none;
+}
+
+.site-footer-socials a {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: 1rem;
+    font-weight: 400;
+    color: #eef4ff;
+    transition: var(--transition-fast);
+}
+
+.site-footer-socials a:hover {
+    color: #ffffff;
+}
+
+.site-footer-socials svg {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+}
+
+/* The oversized name, cropped by the panel. Sits just darker than the
+   gradient's foot so it reads as embossed rather than as a headline. */
+.site-footer-mark {
+    position: absolute;
+    left: 0;
+    right: 0;
+    /* Hangs past the panel so the letters are cropped by its edge, as in the
+       reference — but only far enough that their top two-thirds stay in the
+       part of the dissolve still letting blue through. Dropped lower and the
+       whole word sinks into the opaque foot. */
+    bottom: clamp(-50px, -4vw, -24px);
+    margin: 0;
+    text-align: center;
+    pointer-events: none;
+    user-select: none;
+}
+
+.mark-full {
+    display: block;
+    font-size: clamp(3.5rem, 14vw, 12.6rem);   /* reference: 202px */
+    font-weight: 600;
+    line-height: 0.85;
+    letter-spacing: -0.04em;
+    white-space: nowrap;
+    /* Painted in the page's own colour, exactly as the reference does it: on
+       the blue it reads as a cut-out, and where the dissolve above thickens it
+       melts into the page. That is why it needs no opacity of its own — and
+       why it works in both themes without a second rule. */
+    color: var(--footer-foot);
+    opacity: 1;
+}
+
+@media (max-width: 768px) {
+    .site-footer {
+        /* Matches the 900px rule above: enough room under the links for the
+           dissolve and the name to have the lower half to themselves. */
+        min-height: 374px;
+    }
+    .site-footer-tagline {
+        justify-content: center;
+        text-align: center;
+    }
+}
+
+/* On a tall, narrow screen the hero's content is short, so splitting the
+   fold's free space between the logos and the cue stranded the cue far below
+   the logos. Dropping its auto margin lets the logos' own margin carry both
+   to the foot of the fold as one group, with only a small gap between. */
+@media (max-width: 768px) {
+    .scroll-cue {
+        margin-top: 0;
+        padding-top: clamp(20px, 4vh, 36px);
+    }
+
+    /* With the cue now resting on the fold's floor, the desktop run-up to the
+       first project is far more than a phone needs. */
+    .featured-section {
+        padding-top: clamp(28px, 5vh, 48px);
+    }
+}
+
+/* --- Footer links on tablet and phone ------------------------------------
+   The desktop row is four wide labels separated by a large gap. Below ~900px
+   that no longer fits on one line, and wrapping produced the worst of both:
+   three links on one row, a fourth orphaned underneath, each row centred
+   independently so nothing lined up.
+
+   Below this breakpoint the row becomes a true column — one link per line,
+   sharing a single left edge. The column is only as wide as its longest
+   label and centred as a block, so the list sits in the middle of the panel
+   while the labels stay flush left and scannable. */
+@media (max-width: 900px) {
+    .site-footer-socials {
+        flex-direction: column;
+        flex-wrap: nowrap;
+        align-items: flex-start;
+        /* The reference's pitch, near enough: link plus gap lands at ~36px, so
+           the four sit as one tight block rather than a loose ladder. */
+        gap: 7px;
+        width: fit-content;
+        /* Set in from the left rather than centred. Centring on the longest
+           label pushed the whole column right and left the panel looking
+           bottom-heavy; a fixed inset holds it to the upper left, which is
+           where the reference puts it. */
+        margin-left: clamp(24px, 11%, 48px);
+        margin-right: auto;
+    }
+
+    /* Back to top is an action rather than a profile link, so it reads last —
+       the arrangement in the reference design. It takes no extra margin: the
+       gap that separated it made the column's rhythm uneven and pushed it into
+       the name below. */
+    .site-footer-socials li:first-child {
+        order: 1;
+    }
+
+    /* The reference's proportions: the links begin about a quarter of the way
+       down and finish around three-fifths, leaving the whole lower half to the
+       dissolve and the name. No bottom padding — the panel's min-height is
+       what reserves that space, so padding here would only push the column
+       further into the pale end. */
+    .site-footer-content {
+        padding-top: clamp(44px, 8vh, 66px);
+        padding-bottom: 0;
+    }
+
+    .site-footer {
+        min-height: 374px;
+    }
+
+    /* The reference crops its mark on the panel's bottom edge, but it can do
+       that because "Cyze" is short enough to set at 200px. "Nirali Amin" is
+       nearly six times as wide per point of size, so on a 330px panel it caps
+       around 56px — cropped at the edge it would sit in the opaque foot of the
+       dissolve and vanish. Lifted instead to where the veil still lets the
+       blue through, so it reads as the silhouette it is meant to be. */
+    .site-footer-mark {
+        bottom: 64px;
+    }
+}
+
+/* --- Footer flowers ------------------------------------------------------
+   Layout from cyze.dev: a zero-height flex row aligned to flex-end, so the
+   flowers overflow upward out of it, pulled down by a negative bottom margin
+   until their stems sit on the panel's top edge.
+   ------------------------------------------------------------------------ */
+.site-footer-flowers {
+    /* The centre of each flower is a filled dot standing in for a hole — it has
+       to match the page behind it, or it reads as a black bead. It was pinned
+       to the dark theme's colour, so on the light one it stayed near-black.
+       Inlined SVG inherits `color`, so the centres take currentColor and this
+       one line moves them; the petals stay #4390FF in both themes, exactly as
+       the two exported sets do. */
+    color: #0C1C3A;
+
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    height: 0;
+    /* -2px, not -26px: each SVG's artwork runs to the very bottom of its
+       viewBox (measured gaps of 0.2-1.5px), so the stem tips are the box's
+       bottom edge. A 2px tuck guarantees they meet the panel with no hairline
+       gap from sub-pixel rounding, while leaving nothing lying across it —
+       the stems end exactly at the rim and read as growing out of it. */
+    margin: 0 3rem -2px;
+    pointer-events: none;   /* only the flowers themselves are hoverable */
+    /* The panel comes later in the DOM and would paint over even that 2px. */
+    position: relative;
+    z-index: 2;
+}
+
+.flower {
+    display: inline-flex;
+    pointer-events: auto;
+}
+
+.flower + .flower {
+    margin-left: 1.25rem;
+}
+
+/* The SVGs carry their own width/height, already at the reference's scale
+   (30-59px wide, 53-84px tall), so nothing here needs to size them. */
+.flower svg {
+    display: block;
+    overflow: visible;   /* the bend pushes geometry past the viewBox */
+}
+
+/* No keyframes: initFlowerSway drives the transform per frame from a spring,
+   so the motion is continuous and proximity-driven rather than a canned clip. */
+
+/* Hidden progressively on narrow screens, as in the reference. */
+@media (max-width: 900px) {
+    .site-footer-flowers .flower:nth-child(2),
+    .site-footer-flowers .flower:nth-child(6) { display: none; }
+}
+
+@media (max-width: 640px) {
+    .site-footer-flowers { margin-left: 1.5rem; margin-right: 1.5rem; }
+    .site-footer-flowers .flower:nth-child(4) { display: none; }
+}
+
+/* --- Footer texture ------------------------------------------------------
+   The fine speckle over the reference's panel is gradient dithering, not an
+   asset — there is no texture layer anywhere in its DOM. This is a real noise
+   overlay standing in for it, which also breaks up the banding a large
+   gradient would otherwise show.
+   ------------------------------------------------------------------------ */
+.site-footer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.62;
+    mix-blend-mode: soft-light;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.62' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 140px 140px;
+}
+
+/* ==========================================================================
+   Light theme
+
+   Dark is the default (no class on <html>); light is opt-in and applied by
+   adding .light, so a first-time visitor always lands on dark regardless of
+   their OS setting.
+
+   Contrast is budgeted against #c3dff5 — the top stop of the sky ramp below,
+   and the darkest ground any text can land on, since the ramp is fixed to the
+   viewport. All AA for normal text:
+     text  #12182b  12.75   muted  #49546e  5.47
+     light #556076   4.58   accent #ae2a5d  4.62
+   ========================================================================== */
+html.light {
+    --color-bg: #eef4fb;
+    --color-bg-blue: #c3dff5;
+    --color-bg-card: #ffffff;
+
+    /* The light sky ramp ends near-white at the horizon, so that is what the
+       footer has to dissolve into here — and the rim blue goes deeper, since a
+       light ground needs more saturation to hold the same presence. */
+    --footer-foot: oklch(97.5% 0.009 250);   /* the light ramp's last stop */
+    --footer-blue: oklch(0.55 0.24 260);
+
+    /* The pill sits on the artwork, not the page, so it keeps the same dark
+       resting colour here; only the lit state follows the theme's blue. */
+    --cta-bg-hover: oklch(0.55 0.24 260);
+    --color-text: #12182b;
+    /* These two and the accent are a step darker than they would need to be
+       on flat white: the sky ramp below tops out at #c3dff5, and every one of
+       them has to clear AA against that darkest point, not just the pale end. */
+    --color-text-muted: #49546e;
+    --color-text-light: #556076;
+    --color-border: #d3ddea;
+    --color-border-hover: #b6c6da;
+    /* #ff6b9d only reaches 2.1:1 on white; this darker pink holds the hue
+       while passing AA over the blue. */
+    --color-accent: #ae2a5d;
+    --color-figure: oklch(0.50 0.13 252);
+    --color-label: oklch(0.30 0.05 258);
+}
+
+/* The sky ramp, following the reference's light mode: blue at the top of the
+   viewport easing down to near-white at the horizon.
+
+   Two things are carried over deliberately. It interpolates in oklab, which
+   keeps the blue from going grey through the middle the way sRGB blending
+   does. And the stops trace the reference's eased lightness curve rather than
+   a straight ramp — the blue holds near the top, then opens up quickly — so
+   it reads as depth rather than as a flat wash. The lightness range is
+   compressed against the reference's, whose top is dark enough that it needs
+   white body text; this one keeps dark text readable at every scroll offset.
+
+   background-attachment stays fixed (set on html), so the ramp maps to the
+   viewport and any text can land over any part of it. That is why the
+   contrast budget is set against the top stop. */
+html.light {
+    background-image: linear-gradient(
+        in oklab to bottom,
+        oklch(89.00% 0.0420 242.0) 0.000%,
+        oklch(89.00% 0.0420 242.0) 4.167%,
+        oklch(89.02% 0.0419 242.0) 8.333%,
+        oklch(89.07% 0.0417 242.1) 12.500%,
+        oklch(89.16% 0.0414 242.2) 16.667%,
+        oklch(89.32% 0.0408 242.3) 20.833%,
+        oklch(89.53% 0.0399 242.5) 25.000%,
+        oklch(89.78% 0.0390 242.7) 29.167%,
+        oklch(90.13% 0.0376 243.1) 33.333%,
+        oklch(90.52% 0.0361 243.4) 37.500%,
+        oklch(90.95% 0.0344 243.8) 41.667%,
+        oklch(91.46% 0.0325 244.3) 45.833%,
+        oklch(92.01% 0.0303 244.8) 50.000%,
+        oklch(92.58% 0.0281 245.4) 54.167%,
+        oklch(93.18% 0.0258 245.9) 58.333%,
+        oklch(93.80% 0.0234 246.5) 62.500%,
+        oklch(94.42% 0.0210 247.1) 66.667%,
+        oklch(95.02% 0.0186 247.7) 70.833%,
+        oklch(95.59% 0.0164 248.2) 75.000%,
+        oklch(96.12% 0.0144 248.7) 79.167%,
+        oklch(96.58% 0.0126 249.1) 83.333%,
+        oklch(96.95% 0.0111 249.5) 87.500%,
+        oklch(97.25% 0.0100 249.8) 91.667%,
+        oklch(97.43% 0.0093 249.9) 95.833%,
+        oklch(97.50% 0.0090 250.0) 100.000%
+    );
+}
+
+/* The capsule is a dark glass in dark mode; on a light ground it has to
+   invert or it reads as a black bar. */
+html.light .nav-capsule {
+    background:
+        linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.85) 0%,
+            rgba(255, 255, 255, 0.62) 45%,
+            rgba(255, 255, 255, 0.50) 100%
+        ),
+        rgba(240, 244, 250, 0.72);
+    border-color: rgba(18, 24, 43, 0.10);
+    box-shadow:
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.90),
+        inset 0 -1px 0 0 rgba(18, 24, 43, 0.04),
+        0 16px 40px rgba(18, 24, 43, 0.10),
+        0 2px 8px rgba(18, 24, 43, 0.06);
+}
+
+html.light .nav-capsule.nav-scrolled {
+    box-shadow:
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.90),
+        inset 0 -1px 0 0 rgba(18, 24, 43, 0.04),
+        0 20px 50px rgba(18, 24, 43, 0.16),
+        0 3px 10px rgba(18, 24, 43, 0.10);
+}
+
+html.light .nav-capsule::before {
+    background: radial-gradient(
+        120% 100% at 50% 0%,
+        rgba(255, 255, 255, 0.75) 0%,
+        rgba(255, 255, 255, 0.00) 62%
+    );
+}
+
+html.light .nav-pill-link {
+    color: rgba(18, 24, 43, 0.55);
+}
+
+html.light .nav-pill-link:hover,
+html.light .nav-pill-link.active {
+    color: var(--color-text);
+}
+
+/* The client wordmarks are baked at #526375 and brightened for the dark
+   ground; on white they need darkening instead or they wash out. */
+html.light .logo-img {
+    filter: brightness(0.55);
+}
+
+html.light .client-logo {
+    opacity: 0.85;
+}
+
+/* White-on-white would vanish. */
+/* The CTA row's colours now come from the Liquid Glass tokens, which switch
+   with the theme on their own — see the --lg-* block. Nothing theme-specific
+   is needed here. */
+
+/* The pill that follows the cursor over a project image is white on a dark
+   page; on light it inverts so it still separates from the artwork. */
+/* No light-theme rule for the pill: its background context is the cover art,
+   which does not change with the theme, so it keeps the light recipe in both. */
+
+html.light .site-footer-flowers {
+    color: #D5E4FF;   /* the light export's centre colour */
+}
+
+/* The footer panel stays blue in both modes — it is the one surface that does
+   not invert, exactly as on the reference, which is a light site with this
+   same blue footer. Only the meta line above it follows the theme. */
+/* --------------------------------------------------------------------------
+   Theme toggle — ported from cyze.dev
+
+   The track is fully transparent with no border in either theme, which is why
+   the control reads as a dot beside a filled circle rather than as a pill.
+   The circle is the thumb; the dot it covers is painted in the page
+   background so it reads as a hole punched out of the circle.
+
+   On hover the thumb leans 3px toward the side it would travel to, the
+   knocked-out dot blurs away, and an arrow pointing that way takes its place.
+   -------------------------------------------------------------------------- */
+:root {
+    /* The toggle keeps its own blue: --color-accent is the pink used by the
+       CTAs, and the reference control is blue in both themes. */
+    --toggle-accent: #509aff;
+    --ease-out-back: cubic-bezier(0.2, 0, 0, 1.4);
+    --ease-out-sharp: cubic-bezier(0.2, 0, 0, 1);
+}
+
+html.light {
+    --toggle-accent: #0062fa;
+}
+
+.theme-toggle {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 56px;
+    min-height: 44px;
+    padding: 0;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    flex: 0 0 auto;
+}
+
+/* The reference sets outline:none here; kept visible instead, since removing
+   it leaves keyboard users with no indication of focus. Invisible to mouse
+   users, so the look is unchanged. */
+.theme-toggle:focus-visible .toggle-track {
+    outline: 2px solid var(--toggle-accent);
+    outline-offset: 4px;
+    border-radius: 9999px;
+}
+
+.toggle-track {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 52px;
+    height: 28px;
+    border-radius: 9999px;
+    border: none;
+    background: transparent;
+}
+
+.toggle-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 22px;
+    height: 22px;
+    border-radius: 9999px;
+    background: var(--toggle-accent);
+    transform: translate(24px);   /* dark: parked on the right */
+    /* The reveal handler re-enables exactly this transition while the page
+       wipes over, so the thumb keeps sliding through the switch. */
+    transition: transform 0.35s var(--ease-out-sharp);
+}
+
+html.light .toggle-thumb { transform: translate(0); }
+
+.theme-toggle:hover .toggle-thumb { transform: translate(21px); }
+html.light .theme-toggle:hover .toggle-thumb { transform: translate(3px); }
+
+/* Must follow the hover rules — equal specificity, so source order decides. */
+.theme-toggle:active .toggle-thumb { transform: translate(24px) scaleX(1.1) scaleY(0.95); }
+html.light .theme-toggle:active .toggle-thumb { transform: scaleX(1.1) scaleY(0.95); }
+
+.toggle-icon {
+    position: absolute;
+    top: 50%;
+    width: 14px;
+    height: 14px;
+    z-index: 1;
+    transform: translateY(-50%);
+    transition: background-color 0.35s var(--ease-out-sharp),
+                opacity 0.3s var(--ease-out-back),
+                transform 0.3s var(--ease-out-back),
+                filter 0.3s var(--ease-out-back);
+}
+
+.toggle-dot {
+    display: block;
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+}
+
+/* Whichever dot sits under the thumb takes the page background; the far one
+   is a dimmed accent dot. */
+.toggle-icon--sun { left: 10px; background-color: var(--toggle-accent); opacity: 0.4; }
+.toggle-icon--moon { right: 10px; background-color: var(--color-bg); opacity: 1; }
+
+html.light .toggle-icon--sun { background-color: var(--color-bg); opacity: 1; }
+html.light .toggle-icon--moon { background-color: var(--toggle-accent); opacity: 0.4; }
+
+/* Hover: the far dot comes up to full, the covered one blurs out. */
+.theme-toggle:hover .toggle-icon--sun { opacity: 1; }
+html.light .theme-toggle:hover .toggle-icon--moon { opacity: 1; }
+
+.theme-toggle:hover .toggle-icon--moon,
+html.light .theme-toggle:hover .toggle-icon--sun {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.4) rotate(-30deg);
+    filter: blur(3px);
+    transition: opacity 0.2s ease-out,
+                transform 0.2s ease-out,
+                filter 0.2s ease-out;
+}
+
+.toggle-icon--arrow {
+    left: auto;
+    right: 7px;
+    opacity: 0;
+    pointer-events: none;
+    color: var(--color-bg);
+    /* scaleX(-1) turns the right-pointing glyph around; in dark the thumb is
+       on the right, so the arrow has to point back to the left. */
+    transform: translateY(-50%) scaleX(-1) scale(0.4) rotate(20deg);
+    filter: blur(3px);
+    transition: opacity 0.2s ease-out,
+                transform 0.2s ease-out,
+                filter 0.2s ease-out;
+}
+
+html.light .toggle-icon--arrow {
+    left: 7px;
+    right: auto;
+    transform: translateY(-50%) scale(0.4) rotate(20deg);
+}
+
+.theme-toggle:hover .toggle-icon--arrow {
+    opacity: 1;
+    transform: translateY(-50%) scaleX(-1);
+    filter: blur(0);
+    transition: opacity 0.3s var(--ease-out-back),
+                transform 0.3s var(--ease-out-back),
+                filter 0.3s var(--ease-out-back);
+}
+
+html.light .theme-toggle:hover .toggle-icon--arrow {
+    transform: translateY(-50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .toggle-thumb,
+    .toggle-icon { transition: none; }
+}
+
+/* ==========================================================================
+   Typed hero headline
+
+   The script splits the headline into per-word, per-character spans and
+   reveals them 50ms apart, with a caret parked just past the newest one.
+
+   The heading becomes the caret's positioning context, since the script reads
+   offsetLeft/offsetTop off each character and those are measured against the
+   nearest positioned ancestor.
+   ========================================================================== */
+.hero-headline.is-typed {
+    position: relative;
+}
+
+/* Words stay whole so the line breaks exactly where it did before the split;
+   characters are inline, so kerning and justification are unchanged. */
+.typed-word {
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.typed-char {
+    opacity: 0;
+    /* 0.01s in the source — an on/off reveal, not a fade. The stagger is what
+       reads as typing; a per-character fade would blur it into a wash. */
+    transition: opacity 0.01s linear;
+}
+
+.typed-cursor {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 2px;
+    /* Matches the cap height closely enough at every clamped headline size,
+       and moves with the type rather than needing its own scale. */
+    height: 0.78em;
+    /* The caret sits on the text baseline, which is below the line box top by
+       the leading — nudge it down by half the extra. */
+    margin-top: 0.16em;
+    background: currentColor;
+    opacity: 0;
+    transform: translate(var(--cursor-pos-x, 0), var(--cursor-pos-y, 0));
+    pointer-events: none;
+}
+
+.typed-cursor.is-visible {
+    opacity: 1;
+    animation: typed-caret-blink 1s steps(1, end) infinite;
+}
+
+/* cursorPersists is false on the reference's hero, so the caret leaves once
+   the line finishes. */
+.typed-cursor.is-done {
+    opacity: 0;
+    animation: none;
+    transition: opacity 0.5s linear;
+}
+
+@keyframes typed-caret-blink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0.15; }
+}
+
+/* Read once, as one sentence: the split copy is aria-hidden and this carries
+   the real text. */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .typed-char { opacity: 1; transition: none; }
+    .typed-cursor { display: none; }
+}
+
+/* ==========================================================================
+   More Work — infinite marquee
+
+   Same geometry and loop mechanism as the info page's gallery strip: two
+   identical runs side by side, translated by exactly one run's width so the
+   restart lands on an identical frame.
+
+   The difference is that these items are links, which adds two requirements
+   the gallery does not have — the strip pauses under the pointer so a target
+   holds still long enough to be clicked, and each item is a real button, so
+   it is reachable by keyboard.
+   ========================================================================== */
+.more-work-section {
+    padding-top: var(--space-xl);
+    padding-bottom: var(--space-xl);
+}
+
+.more-work-title {
+    font-family: var(--font-sans);
+    font-size: 2rem;
+    font-weight: 400;
+    line-height: 1.1;
+    margin-bottom: var(--space-md);
+    color: var(--color-text);
+}
+
+.more-work-marquee {
+    /* Full-bleed, while the heading above stays in the reading lane. */
+    margin-inline: calc(50% - 50vw);
+    width: auto;
+    overflow: hidden;
+}
+
+.more-work-track {
+    display: flex;
+    width: max-content;
+    /* Paused until the script has cloned the run — a single run would loop
+       with a visible jump back to the start. */
+    animation: more-work-marquee 60s linear infinite;
+    animation-play-state: paused;
+}
+
+.more-work-track.is-running {
+    animation-play-state: running;
+}
+
+/* Stops wherever it is, rather than easing out — the point is to hold a
+   target still. Bound to the marquee, not the item, so the strip does not
+   restart every time the pointer crosses a gap between two cards. */
+.more-work-marquee:hover .more-work-track.is-running,
+.more-work-marquee:focus-within .more-work-track.is-running {
+    animation-play-state: paused;
+}
+
+@keyframes more-work-marquee {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-50%, 0, 0); }
+}
+
+.more-work-run {
+    display: flex;
+    gap: 24px;
+    /* The gap after the last item, so the seam spaces like every other join. */
+    padding-right: 24px;
+    margin: 0;
+    list-style: none;
+    flex: 0 0 auto;
+}
+/* One size for every card. A mixed rhythm suits the info page's photo strip,
+   but these are project covers and read as a set — an uneven run made them
+   look like different kinds of thing.
+
+   400x250 is 16:10, the same ratio the featured project covers use, so one
+   artwork shape serves the whole site. */
+.more-work-item {
+    flex: 0 0 auto;
+    width: 400px;
+    height: 250px;
+}
+
+.more-work-link {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    overflow: hidden;
+    background-color: var(--color-bg-card);
+    cursor: pointer;
+    transition: border-color 0.3s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.more-work-link:hover,
+.more-work-link:focus-visible {
+    border-color: var(--color-border-hover);
+    transform: translateY(-4px);
+}
+
+.more-work-link:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+}
+
+.more-work-link img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+}
+
+/* Sits over the foot of the card, on a scrim so it stays legible whatever
+   the artwork does underneath. */
+/* --- Card CTA ------------------------------------------------------------
+   The reference's hover button, rebuilt. At rest the card is just artwork; on
+   hover a pill rises into the bottom of it carrying the project's title and an
+   outbound arrow, and the pill itself lights up when the pointer is over it.
+
+   Timings are the reference's own: the pill takes 0.4s on a
+   cubic-bezier(.2, 0, 0, 1) — a curve that leaves fast and settles slowly — while
+   its label follows on a shorter 0.18s with a smaller rise, so the text arrives
+   just after the surface it sits on rather than with it.
+   ------------------------------------------------------------------------ */
+.more-work-label {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    padding: 14px 20px;
+    border-radius: 999px;
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    text-align: left;
+
+    /* Liquid glass: a thin tinted layer over a blur of the artwork beneath,
+       the same material as the nav capsule but lighter — a small chip should
+       read as thinner than a large surface, so 18px of blur against the
+       capsule's 32px, and a shallower shadow. */
+    background:
+        linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.14) 0%,
+            rgba(255, 255, 255, 0.04) 55%,
+            rgba(255, 255, 255, 0.00) 100%
+        ),
+        rgba(12, 18, 32, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow:
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.28),   /* specular rim */
+        0 8px 24px rgba(4, 8, 13, 0.28);
+
+    /* Vibrancy: over a translucent surface, flat light-grey text goes muddy.
+       Full-strength colour, a half-step more weight and a touch of tracking
+       hold it legible against whatever artwork is blurring underneath. */
+    color: #f4f8ff;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+
+    /* Held back until the card is hovered. The blur is part of the entrance,
+       not a constant: it materialises — radius and scale arriving together on
+       one curve — rather than a finished pane fading up. */
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+    backdrop-filter: blur(0px) saturate(100%);
+    -webkit-backdrop-filter: blur(0px) saturate(100%);
+    transition:
+        transform 0.4s cubic-bezier(0.2, 0, 0, 1),
+        backdrop-filter 0.4s cubic-bezier(0.2, 0, 0, 1),
+        -webkit-backdrop-filter 0.4s cubic-bezier(0.2, 0, 0, 1),
+        opacity 0.25s,
+        background 0.2s,
+        border-color 0.2s,
+        color 0.2s,
+        box-shadow 0.3s;
+}
+
+.more-work-link:hover .more-work-label,
+.more-work-link:focus-visible .more-work-label,
+.cs-figma:hover .more-work-label,
+.cs-figma:focus-visible .more-work-label {
+    opacity: 1;
+    transform: none;
+    backdrop-filter: blur(18px) saturate(180%);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+}
+
+.more-work-label-text {
+    /* Trails the pill by a beat, and truncates rather than wrapping — a long
+       title must not turn the pill into two lines. */
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    opacity: 0;
+    transform: translateY(6px);
+    transition:
+        transform 0.18s cubic-bezier(0.2, 0, 0, 1),
+        opacity 0.15s;
+}
+
+.more-work-label-arrow {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    opacity: 0;
+    transform: translateY(6px);
+    transition:
+        transform 0.18s cubic-bezier(0.2, 0, 0, 1),
+        opacity 0.15s;
+}
+
+.more-work-link:hover .more-work-label-text,
+.more-work-link:hover .more-work-label-arrow,
+.more-work-link:focus-visible .more-work-label-text,
+.more-work-link:focus-visible .more-work-label-arrow,
+.cs-figma:hover .more-work-label-text,
+.cs-figma:hover .more-work-label-arrow,
+.cs-figma:focus-visible .more-work-label-text,
+.cs-figma:focus-visible .more-work-label-arrow {
+    opacity: 1;
+    transform: none;
+}
+
+/* Pointer over the pill itself — the reference's third state. It sits inside
+   the anchor, so the card stays hovered and only the pill changes. */
+.more-work-label:hover {
+    /* Still glass — the tint changes, the material does not. */
+    background:
+        linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.20) 0%,
+            rgba(255, 255, 255, 0.06) 55%,
+            rgba(255, 255, 255, 0.00) 100%
+        ),
+        color-mix(in srgb, var(--cta-bg-hover) 72%, transparent);
+    border-color: rgba(255, 255, 255, 0.22);
+    box-shadow:
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.35),
+        0 10px 28px -4px color-mix(in srgb, var(--cta-bg-hover) 45%, transparent);
+}
+
+/* A device with no hover can never reach the state this pill belongs to, and
+   pinned open it just covers the artwork — which already carries its own
+   title. Taken out of the layout entirely rather than left at opacity 0, so
+   it cannot swallow a tap meant for the card either. */
+@media (hover: none) {
+    .more-work-label {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .more-work-label,
+    .more-work-label-text,
+    .more-work-label-arrow {
+        transition: opacity 0.15s;
+        transform: none;
+    }
+
+    /* The blur is presentational here, not an entrance — hold it steady rather
+       than animating the radius. */
+    .more-work-label,
+    .more-work-link:hover .more-work-label,
+    .cs-figma:hover .more-work-label {
+        backdrop-filter: blur(18px) saturate(180%);
+        -webkit-backdrop-filter: blur(18px) saturate(180%);
+    }
+}
+
+/* Translucency asked to be turned down: make the chip frosty rather than
+   see-through — raise the fill, drop the blur entirely. */
+@media (prefers-reduced-transparency: reduce) {
+    .more-work-label,
+    .more-work-link:hover .more-work-label,
+    .cs-figma:hover .more-work-label {
+        background: var(--cta-bg);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
+    .more-work-label:hover {
+        background: var(--cta-bg-hover);
+    }
+}
+
+/* Higher contrast asked for: a near-solid surface with a defined border, so
+   the label never has to compete with the artwork behind it. */
+@media (prefers-contrast: more) {
+    .more-work-label,
+    .more-work-link:hover .more-work-label,
+    .cs-figma:hover .more-work-label {
+        background: #0a121c;
+        border-color: rgba(255, 255, 255, 0.45);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+
+    .more-work-label:hover {
+        background: var(--cta-bg-hover);
+    }
+}
+
+@media (max-width: 700px) {
+    .more-work-item { width: 288px; height: 180px; }
+    .more-work-run { gap: 16px; padding-right: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    /* Motion off, but the strip must stay reachable — hand it back to the
+       user as an ordinary horizontal scroller. */
+    .more-work-track { animation: none; }
+    .more-work-marquee {
+        overflow-x: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-border) transparent;
+    }
+    .more-work-link { transition: none; }
+}
+
+/* ==========================================================================
+   Case study — board stack
+
+   For projects whose case study is a sequence of exported boards rather than
+   written sections. The boards carry their own margins and typography, so
+   they butt together with no gap and no rounding: any padding between them
+   would read as a seam in artwork that was composed to run continuously.
+   ========================================================================== */
+.cs-board-stack {
+    display: flex;
+    flex-direction: column;
+    /* Wider than the reading lane, since these are full compositions rather
+       than text — but still short of full-bleed, so the page keeps a margin. */
+    margin-inline: auto;
+    max-width: 1100px;
+    width: 100%;
+    border-radius: var(--border-radius-large);
+    overflow: hidden;
+    background-color: var(--color-bg-card);
+}
+
+/* --- Case study: screen rail ---------------------------------------------
+   The shipped screens as a snap rail. The card at the centre is at full size
+   and the rest sit back, scaled and dimmed, so attention lands on one screen
+   at a time the way it does flicking through the app itself.
+
+   Native overflow scrolling does the work: the rail is a real scroll container
+   with snap points, so it drags, flicks, takes a trackpad and is keyboard
+   reachable without any of that being scripted. The JS only decides which card
+   is centred and moves it on a timer.
+   ------------------------------------------------------------------------ */
+.cs-rail {
+    --rail-card: clamp(140px, 21vw, 200px);
+
+    margin-top: var(--space-lg);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    /* The rail is its own affordance; a bar under it would only add noise. */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.cs-rail::-webkit-scrollbar {
+    display: none;
+}
+
+/* The rail reads as part of the Outcome section above it, so it sits closer
+   to that than to whatever follows — without the break below, the next
+   heading crowds the cards, which is worst on mobile where they are nearly
+   full width. */
+.cs-rail + .cs-content-grid {
+    margin-top: calc(var(--space-xl) + var(--space-md));
+}
+
+.cs-rail-track {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    list-style: none;
+    margin: 0;
+    /* The track has to grow to its content. Left as a block-level flex box it
+       stays the width of the rail, its items overflow it, and the scroll
+       container sees nothing to scroll. */
+    width: max-content;
+    /* Half a viewport short of a card either side, so the first and last can
+       reach the centre like every other one. */
+    padding: var(--space-sm) calc(50% - var(--rail-card) / 2);
+}
+
+.cs-rail-item {
+    flex: 0 0 var(--rail-card);
+    scroll-snap-align: center;
+    transform: scale(0.84);
+    opacity: 0.45;
+    transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+                opacity 0.45s ease;
+    will-change: transform;
+}
+
+.cs-rail-item.is-active {
+    transform: scale(1);
+    opacity: 1;
+}
+
+/* The single frame in which the rail wraps from the last card to the first.
+   Nothing should ease across that handover — see setUpRail. */
+.cs-rail.is-snapping .cs-rail-item {
+    transition: none;
+}
+
+.cs-rail-item img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cs-rail {
+        scroll-behavior: auto;
+    }
+
+    .cs-rail-item {
+        transition: opacity 0.2s ease;
+        transform: none;
+    }
+
+    .cs-rail-item.is-active {
+        transform: none;
+    }
+}
+
+/* --- Case study: the widget run -------------------------------------------
+   The library's widgets are introduced the way the source deck does it: a
+   quiet "Introducing" over a title set at reading size, rather than the tiny
+   letterspaced label the rest of the case study uses for its sections. The
+   group heading above them marks where that run starts.
+   ------------------------------------------------------------------------ */
+.cs-group-hdr {
+    margin-top: var(--space-xxl);
+}
+
+.cs-group-title {
+    margin: 0;
+    font-size: clamp(1.6rem, 3.2vw, 2.1rem);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--color-text);
+}
+
+/* Eyebrow and title are one unit. Kept in their own wrapper so the block's
+   flex gap falls between the pair and the copy below, rather than opening up
+   between the word "Introducing" and the thing it is introducing. */
+.cs-section-hdr {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.cs-eyebrow {
+    margin: 0;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-text-light);
+}
+
+.cs-section-title {
+    margin: 0;
+    font-size: clamp(1.25rem, 2.4vw, 1.55rem);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--color-text);
+}
+
+/* One step below a section title: the numbered parts a single widget breaks
+   into. Sits close to the board it labels, with the larger break kept above
+   it so the parts read as a set rather than as separate sections. */
+.cs-subsection-title {
+    margin: var(--space-lg) 0 var(--space-xs);
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.cs-subsection-title + .cs-board-stack {
+    margin-top: 0;
+}
+
+/* The ratio labels that sit over each column group in a board. They were part
+   of the artwork; pulled out, they have to line up with it again.
+
+   Each export has its own geometry, so the inset and the column widths are
+   measured off the file rather than assumed: the inset is where the first
+   group starts, and each column width is the distance to the next one. The
+   4 column board carries only two variants, and they start further in, which
+   is why it needs its own pair of values rather than sharing the other's.
+
+   The pull is the transparent band above the first card in each export,
+   expressed against width. Margin percentages resolve against the container's
+   width and the image's height scales with its width, so one figure holds at
+   every viewport instead of only at the size it was measured at. */
+.cs-variant-row {
+    display: grid;
+    grid-template-columns: var(--variant-cols);
+    list-style: none;
+    max-width: 1100px;
+    padding: 0 0 0 var(--variant-inset);
+    font-size: 0.95rem;
+    font-weight: 500;
+    /* Pitched with the eyebrow, not the body: these name the artwork rather
+       than saying anything themselves, so they sit back from it. */
+    color: var(--color-text-light);
+    margin: 0 auto var(--variant-pull);
+}
+
+/* 3.1 and 3.2: three groups at 4.2%, 36.3% and 68.3%. */
+.cs-variant-row--thirds {
+    --variant-inset: 4.2%;
+    /* Widths are of the content box, which the inset has already narrowed,
+       so the full-width gaps of 32.1 and 32 become 33.51 and 33.4 here. */
+    --variant-cols: 33.51% 33.4% auto;
+    --variant-pull: -8.7%;
+}
+
+/* 3.3: two groups at 4.5% and 36.5%, over a shallower top band than the
+   other two boards carry. */
+.cs-variant-row--pair {
+    --variant-inset: 4.5%;
+    --variant-cols: 33.51% auto;
+    --variant-pull: -3.5%;
+}
+
+/* The four slider boards share one geometry: groups at 4.2%, 36.4% and 68.5%,
+   over top bands within half a percent of each other, so one set of values
+   covers all four rather than four near-identical ones. */
+.cs-variant-row--sliders {
+    --variant-inset: 4.2%;
+    --variant-cols: 33.61% 33.51% auto;
+    --variant-pull: -4.1%;
+}
+
+/* The two story boards were exported separately and their groups do not quite
+   line up with each other, so each keeps its own measured values. */
+.cs-variant-row--story-spec {
+    --variant-inset: 4.2%;
+    --variant-cols: 32.88% 32.46% auto;
+    --variant-pull: -5.24%;
+}
+
+.cs-variant-row--story-live {
+    --variant-inset: 4.3%;
+    --variant-cols: 32.39% 32.92% auto;
+    --variant-pull: -5.14%;
+}
+
+/* Air under the part heading, so the labels read as belonging to the cards
+   below them rather than to the heading above. */
+.cs-subsection-title + .cs-variant-row {
+    margin-top: var(--space-md);
+}
+
+
+/* And the group title needs air under it, or the first "Introducing" reads as
+   its subtitle instead of the start of the section below. */
+.cs-group-hdr + .cs-content-grid {
+    margin-top: var(--space-lg);
+}
+
+/* Sections inside a case study sat flush against each other: the editorial
+   column has no gap of its own, so a text block followed by another, or by a
+   stack of boards, read as one run. These add the break only between
+   consecutive sections, leaving the header and banner margins alone. */
+.cs-content-grid + .cs-content-grid,
+.cs-content-grid + .cs-board-stack,
+.cs-board-stack + .cs-content-grid,
+.cs-board-stack + .cs-board-stack,
+.cs-gallery + .cs-content-grid,
+.cs-impact + .cs-content-grid {
+    margin-top: var(--space-xl);
+}
+
+/* A board that carries its own transparency belongs on the page, not on a
+   card. Painting a surface behind it would box in artwork meant to sit
+   directly on the site's own background. */
+.cs-board-stack--bare {
+    background-color: transparent;
+    border-radius: 0;
+    overflow: visible;
+}
+
+.cs-board {
+    display: block;
+    width: 100%;
+    height: auto;
+    /* Removes the inline-element baseline gap that would otherwise show as a
+       hairline between consecutive boards. */
+    vertical-align: top;
+}
+
+/* Bulleted points inside a case study block. Same measure and colour as the
+   surrounding prose, indented just enough that the markers sit outside it. */
+.cs-list {
+    margin: var(--space-xs) 0 0;
+    padding-left: 1.15em;
+    color: var(--color-text-muted);
+    font-size: 1rem;
+    line-height: 1.7;
+}
+
+.cs-list li + li {
+    margin-top: 6px;
+}
+
+.cs-list strong {
+    color: var(--color-text);
+    font-weight: 600;
+}
+
+.cs-source {
+    margin-top: var(--space-lg);
+    text-align: center;
+    font-size: 0.9375rem;
+}
+
+.cs-source a {
+    color: var(--color-text-muted);
+    border-bottom: 1px solid var(--color-border-hover);
+    padding-bottom: 2px;
+    transition: color 0.25s ease, border-color 0.25s ease;
+}
+
+.cs-source a:hover {
+    color: var(--color-text);
+    border-bottom-color: var(--color-text);
+}
+
+/* ==========================================================================
+   Responsive pass — tablet and phone
+
+   Appended last so these win on source order without needing heavier
+   selectors. The layout already reflowed correctly at every width (no
+   horizontal overflow anywhere, and the grids stack at 768) — what was left
+   was proportion: type and corner radii sized for a 1440px canvas do not
+   scale down on their own, and a 5:2 letterbox is far too short once it is
+   only 334px wide.
+
+   The 600px content column is deliberate and is left alone: it matches the
+   nav capsule's own max-width, which is the design, not a tablet artefact.
+   ========================================================================== */
+
+/* --- Tablet ------------------------------------------------------------- */
+@media (max-width: 1024px) {
+    /* 36px on a 648px box reads as a soft corner; on a tablet's narrower
+       media it starts to read as a lozenge. */
+    .project-thumbnail-wrapper { border-radius: 28px; }
+
+    .project-title { font-size: 2.25rem; }
+}
+
+/* The card only stacked below 768, which left the 769-900 range showing a
+   two-column split with a ~312px image — too small to read a project cover
+   on a tablet. Stacking earlier gives the media the full column instead. */
+@media (max-width: 900px) {
+    .project-card {
+        grid-template-columns: 1fr;
+        column-gap: 0;
+        row-gap: var(--space-md);
+    }
+}
+
+/* --- Phone -------------------------------------------------------------- */
+@media (max-width: 600px) {
+    /* Nav ---------------------------------------------------------------
+       At 390px the capsule had the avatar sitting flush against "Home" with
+       no breathing room. Smaller avatar, tighter left gap, and the links get
+       vertical padding so each one clears the 44px touch minimum even though
+       the text itself is only ~19px tall. */
+    .nav-capsule {
+        padding-left: var(--space-sm);
+        padding-right: var(--space-sm);
+    }
+
+    .nav-left { gap: var(--space-xs); }
+
+    .nav-profile-frame {
+        width: 30px;
+        height: 30px;
+    }
+
+    .nav-right { gap: var(--space-sm); }
+
+    .nav-pill-link {
+        font-size: 0.9rem;
+        /* 12px top and bottom against a 19px line box clears 44px. */
+        padding: 12px 0;
+    }
+
+    /* Hero ---------------------------------------------------------------
+       The fold was carrying ~130px of dead space between the description and
+       the client logos, because the vertical rhythm is a share of viewport
+       height and a phone is tall and narrow. Tightened so the logos sit with
+       the copy rather than drifting away from it. */
+    .hero-section {
+        padding-top: var(--space-sm);
+        padding-bottom: var(--space-md);
+        /* svh, not vh: on a phone vh is the tallest the viewport ever gets, so
+           with the URL bar showing the fold overflows and the logos fall below
+           the screen. svh is the smallest, which is the one that must fit. */
+        /* Short of the full fold on purpose. The stack is centred, so every
+           pixel reserved beyond what the copy needs is split into a band above
+           the headline and a matching one under the scroll cue — and that
+           lower band was holding the first project most of a screen away.
+           Reserving less shrinks both bands, and the projects rise to meet
+           the cue instead. */
+        min-height: calc(100svh - 180px);
+    }
+
+    /* The headline and the logo row both carry margin-top: auto, which on a
+       desktop fold reads as breathing room. On a 844px-tall phone the free
+       space is far larger and the two autos split it into a pair of gaps —
+       roughly 130px of nothing between the copy and the logos. Dropping both
+       lets justify-content centre the stack as one group, so the space sits
+       above and below it instead of inside it. */
+    .hero-headline,
+    .social-proof-row {
+        margin-top: 0;
+    }
+
+    .hero-description {
+        font-size: 1rem;
+        line-height: 1.55;
+    }
+
+    .social-proof-row {
+        /* The logos wrap to two rows here; 16px left them looking like one
+           crowded block rather than two. */
+        gap: var(--space-md) var(--space-md);
+        padding-top: var(--space-md);
+    }
+
+    /* Featured projects --------------------------------------------------
+       42px was set against a 4-column copy block; stacked on a phone it
+       overpowered everything under it. */
+    .project-title { font-size: 1.875rem; }
+
+    .project-description { font-size: 1rem; }
+
+    .project-thumbnail-wrapper { border-radius: 20px; }
+
+    /* Info ----------------------------------------------------------------
+       The 5:2 letterbox is a desktop proportion: at 334px wide it left the
+       portrait only 134px tall, which is too short to read the ND mark the
+       crop was framed around. 3:2 gives it back the height. */
+    .portrait-container { aspect-ratio: 3 / 2; }
+
+    .info-intro-headline { font-size: 2rem; }
+
+    /* The View Resumé row stays horizontal, as on desktop.
+
+       It was inheriting flex-direction: column from the 768 block, and the
+       full-width rule below stretched the two 52px circular icon buttons into
+       flat ellipses. Only the resumé button flexes; the icons keep their
+       fixed square footprint. */
+    .cta-row {
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: nowrap;
+        gap: var(--space-xs);
+    }
+
+    .cta-pink-btn {
+        flex: 1 1 auto;
+        width: auto;
+        justify-content: center;
+    }
+
+    .cta-icon-btn {
+        flex: 0 0 52px;
+        width: 52px;
+    }
+
+    /* Section headings ---------------------------------------------------- */
+    .gallery-section-title,
+    .more-work-title { font-size: 1.625rem; }
+
+    /* Case study ----------------------------------------------------------
+       The board stack is the whole page here, so it gets the full width with
+       only a small radius — a large one crops into artwork that runs to the
+       edge of each board. */
+    .cs-title { font-size: 2rem; }
+    .cs-subtitle { font-size: 1rem; }
+    .cs-board-stack { border-radius: 14px; }
+
+    .more-work-label {
+        font-size: 0.875rem;
+        padding: 24px 12px 12px;
+    }
+}
+
+/* --- Small phones ------------------------------------------------------- */
+@media (max-width: 380px) {
+    /* One step further down for 360px-class devices, where the headline was
+       the only thing still forcing an awkward break. */
+    .hero-headline { font-size: 1.75rem; }
+    .info-intro-headline { font-size: 1.75rem; }
+    .project-title { font-size: 1.75rem; }
+}
+
+/* --- Touch -------------------------------------------------------------- */
+@media (hover: none) {
+    /* Nothing on a touch device can hover, so the marquee never pauses and
+       these strips would be unreadable on the way past. Hand them back as
+       ordinary swipeable scrollers instead, with momentum. */
+    .more-work-marquee,
+    .gallery-marquee {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        /* Stops the swipe chaining to the page when the strip reaches its end.
+           Without this, carrying on past the last card hands the gesture to
+           the document, which pans sideways — and a fixed nav caught mid-pan
+           repaints at two offsets, which is what the doubled capsule was. */
+        overscroll-behavior-x: contain;
+    }
+
+    .more-work-marquee::-webkit-scrollbar,
+    .gallery-marquee::-webkit-scrollbar { display: none; }
+
+    .more-work-track,
+    .gallery-track { animation: none; }
+
+    /* The cloned run exists only to make the loop seamless; with the
+       animation off it is just a duplicate to swipe past. */
+    .more-work-run[aria-hidden="true"],
+    .gallery-run[aria-hidden="true"] { display: none; }
+}
+
+/* --- Footer flowers vs the tagline --------------------------------------
+   The flower row is height:0 with align-items:flex-end, so the flowers
+   overflow upward — by as much as 84px for the tallest stem. On desktop the
+   tagline is a single row with its text pushed to the outer edges, so the
+   centred flowers pass between them. Once it centres and wraps on a phone,
+   the flowers land straight on top of it.
+
+   Clearing the tallest stem is all this needs. Scoped to the widths where the
+   tagline actually centres. */
+@media (max-width: 768px) {
+    /* The tagline sits at the very top of the frame, so the open band above it
+       is the frame's own top margin. Halving that and adding the difference
+       below lifts the tagline into that space while leaving the flowers and
+       the panel exactly where they were — the two numbers are traded, not
+       changed, so the footer as a whole does not move.
+
+       The larger bottom margin is doing the original job too: the flowers
+       overflow upward out of the panel's top edge, and at 96px their tallest
+       stems came within a few pixels of the email address. */
+    .site-footer-frame {
+        margin-top: 48px;
+    }
+
+    .site-footer-tagline {
+        margin-bottom: 144px;
+    }
+}
+
+/* --- Case study: autoplaying carousel -------------------------------------
+   Runs on its own, forever, with no controls to operate. The sense of one
+   image leaving as another arrives comes from three things layered together:
+   the incoming frame crosses the full width while the outgoing one drifts
+   only a third of it (a parallax split — the slower layer reads as further
+   back), and the outgoing frame dims and scales down slightly as it goes, so
+   it falls away rather than merely lagging. The two images meet edge to edge
+   with nothing drawn between them: a lit seam was tried here and read as a
+   hard white line over the artwork rather than as a blend.
+
+   The slide interaction this grew out of is Originkit's Cursor Image Gallery:
+   https://www.originkit.dev/components/cursor-image-gallery                */
+.cs-gallery {
+    --gallery-duration: 850ms;
+    --gallery-ease: cubic-bezier(0.65, 0, 0.35, 1);
+    /* How far the outgoing frame travels, as a share of the incoming one. */
+    --gallery-parallax: 0.34;
+
+    position: relative;
+    margin: var(--space-xl) auto 0;
+    max-width: 1100px;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--border-radius-large);
+    overflow: hidden;
+    background-color: var(--color-bg-card);
+}
+
+.cs-gallery-stage {
+    position: absolute;
+    inset: 0;
+}
+
+.cs-gallery-slide {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform-origin: center;
+    will-change: transform, opacity;
+}
+
+.cs-gallery-slide.is-animating {
+    transition:
+        transform var(--gallery-duration) var(--gallery-ease),
+        opacity var(--gallery-duration) var(--gallery-ease);
+}
+
+/* The frame on its way out sits behind and falls away. */
+.cs-gallery-slide.is-leaving {
+    z-index: 0;
+}
+
+.cs-gallery-slide.is-entering {
+    z-index: 1;
+}
+
+
+/* Nothing moves on its own for anyone who has asked for that. */
+@media (prefers-reduced-motion: reduce) {
+    .cs-gallery-slide.is-animating {
+        transition: none;
+    }
+}
+
+/* --- Case study: impact figures -------------------------------------------
+   The three numbers worth reading before the case study proper: set as cards
+   under the opening carousel rather than buried in the results list at the
+   end. Figure, the word that joins it to its subject, then the subject.   */
+.cs-impact {
+    margin-top: var(--space-xl);
+}
+
+.cs-impact-title {
+    margin: 0 0 var(--space-md);
+}
+
+.cs-impact-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-sm);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.cs-impact-card {
+    /* The figure is sized off this card, not the viewport — see below. */
+    container-type: inline-size;
+    padding: var(--space-md);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-large);
+    background-color: var(--color-bg-card);
+}
+
+.cs-impact-figure {
+    margin: 0;
+    /* Sized off the card rather than the viewport, so "3 months" stays on one
+       line in the same column width that holds "~43%" — the longest figure is
+       about 4x its own font size wide, which this keeps inside the padding. */
+    font-size: clamp(1.6rem, 23cqi, 2.6rem);
+    font-weight: 600;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    color: var(--color-figure);
+}
+
+.cs-impact-lede {
+    margin: var(--space-sm) 0 var(--space-xxs);
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-text-light);
+}
+
+.cs-impact-label {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 500;
+    line-height: 1.35;
+    color: var(--color-text);
+}
+
+/* Names a board inside a stack — same quiet weight as the variant labels, so
+   it reads as a caption on the artwork rather than a section heading. */
+.cs-board-label {
+    margin: 0 0 var(--space-sm);
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--color-text-light);
+}
+
+.cs-board + .cs-board-label {
+    margin-top: var(--space-lg);
+}
+
+@media (max-width: 768px) {
+    .cs-impact-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* --- Case study: role and team --------------------------------------------
+   Who did what, set between the opening carousel and the numbers.         */
+.cs-role {
+    /* Spring for the avatar row, from Transitions.dev's avatar group. The
+       overshoot on the way out is what gives the row its snap back. */
+    --avatar-lift: -6px;
+    --avatar-dur: 320ms;
+    --avatar-scale: 1.06;
+    --avatar-falloff: 0.45;
+    --avatar-ease-in: cubic-bezier(0.22, 1, 0.36, 1);
+    --avatar-ease-out: cubic-bezier(0.34, 3.85, 0.64, 1);
+
+    position: relative;
+    margin-top: var(--space-xl);
+}
+
+.cs-role-title {
+    margin: var(--space-xs) 0 0;
+    font-size: clamp(1.35rem, 2.6vw, 1.7rem);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--color-text);
+}
+
+.cs-role-team {
+    margin: var(--space-md) 0 var(--space-sm);
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--color-text-light);
+}
+
+.cs-avatars {
+    display: flex;
+    align-items: center;
+    /* Overlapped, so the row reads as a group rather than a list. */
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.cs-avatar {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    margin-right: -12px;
+    border-radius: 50%;
+    border: 2px solid var(--color-bg-card);
+    background-color: var(--color-bg-card);
+    cursor: default;
+
+    /* The hover spring itself. translateY before scale, so the scale does not
+       amplify the lift. --shift and --scale-active are written per element by
+       initAvatarGroup; with none set this is the resting state. */
+    transform-origin: center;
+    transform:
+        translateY(var(--shift, 0px))
+        scale(var(--scale-active, 1));
+    transition: transform var(--avatar-dur) var(--avatar-ease-in);
+    will-change: transform;
+}
+
+/* Later avatars sit over earlier ones, and whichever is hovered comes to the
+   front so its lift is never clipped by its neighbour. */
+.cs-avatar:nth-child(1) { z-index: 1; }
+.cs-avatar:nth-child(2) { z-index: 2; }
+.cs-avatar:nth-child(3) { z-index: 3; }
+.cs-avatar:nth-child(4) { z-index: 4; }
+.cs-avatar:nth-child(5) { z-index: 5; }
+.cs-avatar:nth-child(6) { z-index: 6; }
+.cs-avatar.is-active { z-index: 10; }
+
+/* Portraits from the hand-drawn pack in assets/Team. Each file is cropped
+   square to its own disc, so the avatar's own border-radius does the masking
+   and the artwork needs no framing of its own. */
+.cs-avatar-art {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+/* The pack holds only four male figures, so two are used twice. The artwork is
+   black ink on white with the disc as its only saturated colour, which means a
+   hue rotation recolours the disc and leaves the drawing untouched — enough to
+   tell the repeats apart without a second set of files. */
+.cs-avatar-art--teal   { filter: hue-rotate(134deg); }
+.cs-avatar-art--violet { filter: hue-rotate(224deg); }
+.cs-avatar-art--coral  { filter: hue-rotate(310deg); }
+
+/* One floating label for the whole row, moved to whichever avatar is hovered
+   rather than one tooltip per item. */
+.cs-avatar-tip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 18px;
+    border-radius: 14px;
+    background-color: #1c1c1e;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+    white-space: nowrap;
+    opacity: 0;
+    /* Positioned by script; the translate centres it over the avatar. */
+    transform: translate(-50%, -100%) scale(0.94);
+    transform-origin: bottom center;
+    transition:
+        opacity 180ms var(--avatar-ease-in),
+        transform 240ms var(--avatar-ease-in);
+    pointer-events: none;
+}
+
+.cs-avatar-tip.is-visible {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1);
+}
+
+.cs-avatar-tip-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.cs-avatar-tip-role {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #9a9a9f;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cs-avatar {
+        transition: none !important;
+        transform: none !important;
+    }
+
+    .cs-avatar-tip {
+        transition: opacity 120ms linear;
+        transform: translate(-50%, -100%);
+    }
+
+    .cs-avatar-tip.is-visible {
+        transform: translate(-50%, -100%);
+    }
+}
+
+/* --- Case study: previous / next -------------------------------------------
+   Closes out a case study with the two projects either side of it, each
+   showing the cover it already carries on the home page. Built in script from
+   the project cards — see buildCasePager.
+   Pattern after https://www.kerem.co/projects/carbon-health              */
+.cs-pager {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+    margin-top: var(--space-xxl);
+    padding-top: var(--space-lg);
+    border-top: 1px solid var(--color-border);
+}
+
+.cs-pager-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm);
+    border: none;
+    border-radius: var(--border-radius-large);
+    background: none;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+
+.cs-pager-link--next {
+    /* Mirrored, so the pair reads outward from the centre of the page. */
+    flex-direction: row-reverse;
+    text-align: right;
+}
+
+.cs-pager-link:hover,
+.cs-pager-link:focus-visible {
+    background-color: color-mix(in oklab, var(--color-bg-card) 65%, transparent);
+}
+
+.cs-pager-link:focus-visible {
+    outline: 2px solid var(--color-figure);
+    outline-offset: 2px;
+}
+
+.cs-pager-arrow {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+
+.cs-pager-arrow svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* The arrow leans the way it would take you. */
+.cs-pager-link--previous:hover .cs-pager-arrow { transform: translateX(-4px); }
+.cs-pager-link--next:hover .cs-pager-arrow { transform: translateX(4px); }
+
+.cs-pager-link:hover .cs-pager-arrow {
+    border-color: var(--color-border-hover);
+}
+
+.cs-pager-thumb {
+    flex: 0 0 auto;
+    width: 96px;
+    height: 68px;
+    border-radius: 12px;
+    overflow: hidden;
+    background-color: var(--color-bg-card);
+}
+
+.cs-pager-thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--transition-ease);
+}
+
+.cs-pager-link:hover .cs-pager-thumb img {
+    transform: scale(1.06);
+}
+
+.cs-pager-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.cs-pager-eyebrow {
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-text-light);
+}
+
+.cs-pager-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--color-text);
+}
+
+@media (max-width: 768px) {
+    .cs-pager {
+        grid-template-columns: 1fr;
+        gap: var(--space-xs);
+    }
+
+    /* Stacked, both read left to right. */
+    .cs-pager-link--next {
+        flex-direction: row;
+        text-align: left;
+    }
+
+    .cs-pager-thumb {
+        width: 72px;
+        height: 52px;
+    }
+}
+
+/* Boards that ship in a dark-theme and a light-theme version. The dark theme
+   is the default ground, so its version shows unless the page is light. */
+.cs-board--on-light {
+    display: none;
+}
+
+html.light .cs-board--on-dark {
+    display: none;
+}
+
+html.light .cs-board--on-light {
+    display: block;
+}
+
+/* Numbered variant for ordered goals. */
+.cs-list--numbered {
+    list-style: decimal;
+    padding-left: 1.4em;
+}
+
+/* A subheading inside a text block sits closer to the label above it than a
+   standalone subsection heading would. */
+.cs-subsection-title--flush {
+    margin: var(--space-sm) 0 0;
+}
+
+/* A heading that introduces the board directly under it sits close to it,
+   rather than a full section's distance away. */
+.cs-content-grid--heading + .cs-board-stack {
+    margin-top: var(--space-xs);
+}
+
+/* Boards that follow a text block they belong to. */
+.cs-content-grid + .cs-board-stack--tight {
+    margin-top: var(--space-md);
+}
+
+.cs-group-hdr--badge .cs-block-text {
+    margin-top: var(--space-xs);
+    max-width: 34em;
+}
+
+.cs-group-hdr--badge + .cs-board-stack {
+    margin-top: var(--space-md);
+}
+
+.cs-badge-new {
+    display: inline-grid;
+    place-items: center;
+    vertical-align: middle;
+    margin-left: 0.25em;
+    padding: 0.35em 0.7em;
+    border-radius: 999px;
+    background-color: #4736FE;
+    color: #ffffff;
+    font-size: 0.42em;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transform: rotate(-8deg);
+}
+
+/* --- Case study: bento grid ------------------------------------------------
+   The brand-in-use collage, sliced into tiles from one image using the
+   coordinates of its source SVG (1922 x 1080). Every tile holds the whole
+   image, offset so only its own region shows, so the sheet is fetched once.
+
+   Entrance, once the grid is in view: each tile rises and un-shrinks while
+   the picture inside settles from a slight zoom, on a staggered beat. The
+   colour bands wipe in from the left instead, since they are flat shapes
+   that read better drawn than lifted. Both use a long ease-out with no
+   overshoot, so tiles decelerate into place rather than bounce.          */
+.bento {
+    --bento-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --bento-step: 45ms;
+
+    position: relative;
+    container-type: inline-size;
+    margin: var(--space-xl) auto 0;
+    max-width: 1100px;
+    width: 100%;
+    aspect-ratio: 1922 / 1080;
+    border-radius: calc(24 / 1922 * 100cqi);
+    overflow: hidden;
+    background-color: #ffffff;
+}
+
+.bento-tile {
+    position: absolute;
+    left: var(--x);
+    top: var(--y);
+    width: var(--w);
+    height: var(--h);
+    overflow: hidden;
+    border-radius: calc(var(--r) / 1922 * 100cqi);
+    opacity: 0;
+    transform: translateY(4%) scale(0.965);
+    transition:
+        opacity 700ms var(--bento-ease) calc(var(--i) * var(--bento-step)),
+        transform 1100ms var(--bento-ease) calc(var(--i) * var(--bento-step));
+}
+
+.bento-tile img {
+    position: absolute;
+    left: var(--ix);
+    top: var(--iy);
+    width: var(--iw);
+    height: var(--ih);
+    max-width: none;
+    transform: scale(1.12);
+    transform-origin: center;
+    transition: transform 1600ms var(--bento-ease) calc(var(--i) * var(--bento-step));
+}
+
+/* Flat colour bands are revealed rather than lifted. */
+.bento-tile--band {
+    transform: none;
+    clip-path: inset(0 100% 0 0);
+    transition:
+        opacity 300ms linear calc(var(--i) * var(--bento-step)),
+        clip-path 1100ms var(--bento-ease) calc(var(--i) * var(--bento-step));
+}
+
+.bento-tile--band img {
+    transform: none;
+}
+
+.bento.is-in .bento-tile {
+    opacity: 1;
+    transform: none;
+}
+
+.bento.is-in .bento-tile img {
+    transform: scale(1);
+}
+
+.bento.is-in .bento-tile--band {
+    clip-path: inset(0 0 0 0);
+}
+
+/* Once settled, a tile answers the pointer with a slow push-in. The delay is
+   dropped so the hover responds immediately. */
+@media (hover: hover) {
+    .bento.is-settled .bento-tile img {
+        transition: transform 700ms var(--bento-ease);
+    }
+
+    .bento.is-settled .bento-tile--card:hover img,
+    .bento.is-settled .bento-tile--poster:hover img {
+        transform: scale(1.05);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bento-tile,
+    .bento-tile img,
+    .bento-tile--band {
+        opacity: 1;
+        transform: none;
+        clip-path: none;
+        transition: none;
+    }
+}
+
+/* --- Case study: HDFC Bank ---------------------------------------------------
+   One set of parts used across every section of this case study, so the page
+   reads as a single system: a headline with a highlighted phrase, cards on
+   the card surface, three-column rows that stack on small screens, and one
+   accent card per initiative for its impact. Every colour comes from the
+   theme tokens except the accent card, which is a fixed brand blue that
+   reads the same on either theme.                                         */
+.hd {
+    --hd-gap: var(--space-md);
+}
+
+/* Highlighted phrases keep the heading colour, matching the other case
+   studies; the span stays in the markup in case emphasis is wanted later. */
+.hd-hl {
+    color: inherit;
+}
+
+.hd-headline {
+    margin: var(--space-xs) 0 0;
+    max-width: 22em;
+    font-size: clamp(1.45rem, 3vw, 2rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: var(--color-text);
+}
+
+.hd-section,
+.hd-scope,
+.hd-initiative {
+    margin-top: var(--space-xl);
+}
+
+.hd-section > .cs-block-label + .hd-headline {
+    margin-top: var(--space-xs);
+}
+
+/* Columns */
+.hd-col .cs-block-label {
+    display: block;
+    margin-bottom: var(--space-xs);
+}
+
+.hd-list {
+    padding-left: 1.1em;
+}
+
+.hd-list li::marker {
+    color: var(--color-figure);
+}
+
+.hd-list--muted li::marker {
+    color: var(--color-text-light);
+}
+
+/* Journey cards */
+.hd-journey {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-sm);
+    margin: var(--space-sm) 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.hd-card {
+    padding: var(--space-md);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-large);
+    background-color: var(--color-bg-card);
+}
+
+.hd-card-eyebrow,
+.hd-impact-eyebrow,
+.hd-principle-eyebrow {
+    margin: 0;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-text-light);
+}
+
+.hd-card-title {
+    margin: var(--space-xs) 0 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--color-text);
+}
+
+.hd-card-text {
+    margin: var(--space-xs) 0 0;
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: var(--color-text-muted);
+}
+
+
+
+/* Three columns with hairline dividers */
+.hd-trio,
+.hd-initiative-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--hd-gap);
+    margin-top: var(--space-md);
+}
+
+.hd-trio > .hd-col + .hd-col,
+.hd-initiative-grid > .hd-col + .hd-col {
+    padding-left: var(--hd-gap);
+    border-left: 1px solid var(--color-border);
+}
+
+.hd-initiative-grid .cs-block-text,
+.hd-initiative-grid .cs-list,
+.hd-trio .cs-list {
+    font-size: 0.95rem;
+}
+
+.hd-foundations {
+    margin-top: var(--space-lg);
+}
+
+.hd-foundations .cs-block-label {
+    display: block;
+    margin-bottom: var(--space-xs);
+}
+
+/* NDA close */
+.hd-nda {
+    margin: var(--space-lg) 0 0;
+}
+
+.hd-nda img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: var(--border-radius-large);
+    border: 1px solid var(--color-border);
+}
+
+.hd-nda-note {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-xs);
+    margin-top: var(--space-sm);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--color-text-muted);
+}
+
+.hd-nda-note a {
+    color: var(--color-figure);
+    text-underline-offset: 3px;
+}
+
+.hd-nda-badge {
+    padding: 3px 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-text);
+}
+
+@media (max-width: 760px) {
+    .hd-journey,
+    .hd-trio,
+    .hd-initiative-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .hd-trio > .hd-col + .hd-col,
+    .hd-initiative-grid > .hd-col + .hd-col {
+        padding-left: 0;
+        padding-top: var(--hd-gap);
+        border-left: 0;
+        border-top: 1px solid var(--color-border);
+    }
+
+}
+
+
+/* Results: a bento of cards on four columns. The headline number takes the
+   accent card across two columns and two rows; the other four figures fill
+   the 2 x 2 beside it; the two lists close the grid, half and half. */
+.hd-results {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-sm);
+    margin: var(--space-sm) 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.hd-result {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    padding: var(--space-md) var(--space-sm);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-large);
+    background-color: var(--color-bg-card);
+}
+
+.hd-result-figure {
+    font-size: clamp(1.6rem, 3vw, 2.1rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: var(--color-text);
+}
+
+.hd-result-sub {
+    margin-left: 0.15em;
+    font-size: 0.45em;
+    font-weight: 600;
+    letter-spacing: 0;
+    color: var(--color-text-light);
+}
+
+.hd-result-label {
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: var(--color-text-muted);
+}
+
+.hd-result--hero {
+    grid-column: span 2;
+    grid-row: span 2;
+    justify-content: space-between;
+    padding: var(--space-md);
+}
+
+.hd-result--hero .hd-result-figure {
+    font-size: clamp(4rem, 9vw, 6rem);
+    color: #ffffff;
+}
+
+.hd-result--hero .hd-result-label {
+    max-width: 16em;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.hd-result--list {
+    grid-column: span 2;
+    padding: var(--space-md);
+}
+
+.hd-result-title {
+    padding-bottom: var(--space-xs);
+    border-bottom: 1px solid var(--color-border);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+@media (max-width: 760px) {
+    .hd-results {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .hd-result--hero,
+    .hd-result--list {
+        grid-column: 1 / -1;
+        grid-row: auto;
+    }
+}
+
+/* --- HDFC: initiative rail ---------------------------------------------------
+   After the insight cards in the Niva case study: tall light cards with a
+   small centred eyebrow, a centred headline with one tinted phrase, a large
+   figure, and a soft blurred glow rising from the bottom edge. The cards keep
+   their own light surfaces in both themes, so they stand out hard against
+   the dark page. The track loops continuously and pauses under the pointer. */
+.hd-rail {
+    margin-top: var(--space-sm);
+    overflow: hidden;
+    /* No edge fade: fading light cards into a dark page leaves a grey smear,
+       so the rail clips cleanly at its edges, as in the Niva reference. */
+}
+
+.hd-rail-track {
+    display: flex;
+    gap: var(--space-sm);
+    width: max-content;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    animation: hd-rail-loop 48s linear infinite;
+}
+
+.hd-rail:hover .hd-rail-track {
+    animation-play-state: paused;
+}
+
+@keyframes hd-rail-loop {
+    to { transform: translateX(calc(-50% - var(--space-sm) / 2)); }
+}
+
+.hd-insight {
+    --ink: #4a4a48;
+    --tint: #b8862e;
+    --paper: #fcf4e2;
+    --glow: radial-gradient(60% 55% at 10% 100%, #f08a50 0%, transparent 70%),
+            radial-gradient(70% 60% at 45% 100%, #f4c865 0%, transparent 72%),
+            radial-gradient(60% 50% at 85% 100%, #f7f1e4 0%, transparent 70%);
+
+    position: relative;
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: clamp(260px, 42vw, 380px);
+    aspect-ratio: 4 / 5;
+    padding: var(--space-md) var(--space-sm);
+    overflow: hidden;
+    border-radius: 28px;
+    background-color: var(--paper);
+    text-align: center;
+    isolation: isolate;
+}
+
+.hd-insight::after {
+    content: '';
+    position: absolute;
+    inset: 38% -25% -10%;
+    z-index: -1;
+    background: var(--glow);
+    filter: blur(22px);
+}
+
+.hd-insight--dusk {
+    --tint: #c2614a;
+    --paper: #ffffff;
+    --glow: radial-gradient(55% 55% at 15% 100%, #f3c27c 0%, transparent 70%),
+            radial-gradient(55% 55% at 50% 100%, #ec8f74 0%, transparent 70%),
+            radial-gradient(60% 55% at 90% 100%, #8ea3ea 0%, transparent 72%);
+}
+
+.hd-insight--white {
+    --tint: #5b7fee;
+    --paper: #ffffff;
+    --glow: none;
+}
+
+.hd-insight--sky {
+    --tint: #3f6fd8;
+    --paper: #eef3fd;
+    --glow: radial-gradient(60% 55% at 20% 100%, #9fb8f6 0%, transparent 70%),
+            radial-gradient(60% 55% at 80% 100%, #c7b8f3 0%, transparent 70%);
+}
+
+.hd-insight--sage {
+    --tint: #3f8a66;
+    --paper: #f3f7ef;
+    --glow: radial-gradient(60% 55% at 15% 100%, #a9d9b8 0%, transparent 70%),
+            radial-gradient(60% 55% at 75% 100%, #f0dc8c 0%, transparent 70%);
+}
+
+.hd-insight-eyebrow {
+    margin: 0;
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #7b7b78;
+}
+
+.hd-insight-title {
+    margin: var(--space-xs) 0 0;
+    font-size: clamp(1.1rem, 2.2vw, 1.35rem);
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+}
+
+.hd-insight-title em {
+    font-style: normal;
+    color: var(--tint);
+}
+
+.hd-insight-text {
+    margin: var(--space-xs) 0 0;
+    max-width: 22em;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: #6b6b68;
+}
+
+.hd-insight-figure {
+    margin: auto 0 0;
+    font-size: clamp(4rem, 9vw, 5.5rem);
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: -0.05em;
+    color: var(--tint);
+}
+
+.hd-insight-figure sup {
+    font-size: 0.35em;
+    letter-spacing: 0;
+    vertical-align: 0.9em;
+    margin-left: 0.1em;
+}
+
+.hd-insight-label {
+    margin: var(--space-xs) 0 0;
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--tint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hd-rail {
+        overflow-x: auto;
+        -webkit-mask-image: none;
+        mask-image: none;
+    }
+
+    .hd-rail-track {
+        animation: none;
+    }
+
+    .hd-insight[aria-hidden="true"] {
+        display: none;
+    }
+}
+
+/* --- HDFC: paper cards --------------------------------------------------------
+   Every card on this page shares the initiative rail's surface: a fixed light
+   paper, a soft blurred glow rising from the bottom edge, dark ink and blue
+   figures. The surfaces do not follow the site theme, so they read the same
+   high-contrast way on the dark page as on the light one. Tones reuse the
+   rail's gradients. After the Antigravity product cards: generous radius,
+   hairline edge, and a halo rather than a hard shadow. */
+.hd {
+    --hd-blue: #3f5fd8;
+    --hd-ink: #262624;
+    --hd-muted: #626260;
+}
+
+.hd-paper {
+    --paper: #ffffff;
+    --glow: none;
+
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    border: 1px solid rgba(24, 28, 48, 0.07) !important;
+    border-radius: 28px !important;
+    background: var(--paper) !important;
+    box-shadow: 0 18px 40px -30px rgba(96, 64, 24, 0.22);
+    color: var(--hd-ink);
+}
+
+.hd-paper::after {
+    content: '';
+    position: absolute;
+    inset: 50% -25% -35%;
+    z-index: -1;
+    background: var(--glow);
+    filter: blur(26px);
+    pointer-events: none;
+}
+
+.hd-tone--warm {
+    --paper: #fcf4e2;
+    --glow: radial-gradient(60% 55% at 10% 100%, #f08a50 0%, transparent 70%),
+            radial-gradient(70% 60% at 45% 100%, #f4c865 0%, transparent 72%),
+            radial-gradient(60% 50% at 85% 100%, #f7f1e4 0%, transparent 70%);
+}
+
+.hd-tone--dusk {
+    --paper: #ffffff;
+    --glow: radial-gradient(55% 55% at 15% 100%, #f3c27c 0%, transparent 70%),
+            radial-gradient(55% 55% at 50% 100%, #ec8f74 0%, transparent 70%),
+            radial-gradient(60% 55% at 90% 100%, #8ea3ea 0%, transparent 72%);
+}
+
+.hd-tone--sky {
+    --paper: #eef3fd;
+    --glow: radial-gradient(60% 55% at 20% 100%, #9fb8f6 0%, transparent 70%),
+            radial-gradient(60% 55% at 80% 100%, #c7b8f3 0%, transparent 70%);
+}
+
+.hd-tone--sage {
+    --paper: #f3f7ef;
+    --glow: radial-gradient(60% 55% at 15% 100%, #a9d9b8 0%, transparent 70%),
+            radial-gradient(60% 55% at 75% 100%, #f0dc8c 0%, transparent 70%);
+}
+
+.hd-tone--white {
+    --paper: #ffffff;
+}
+
+/* Text on paper: dark ink, muted body, blue for the figures and eyebrows. */
+.hd-paper .hd-card-eyebrow,
+.hd-paper .cs-impact-lede {
+    color: var(--hd-blue);
+}
+
+.hd-paper .hd-card-title,
+.hd-paper .cs-impact-label,
+.hd-paper .hd-result-title {
+    color: var(--hd-ink);
+}
+
+.hd-paper .hd-card-text,
+.hd-paper .hd-result-label,
+.hd-paper .cs-list {
+    color: var(--hd-muted);
+}
+
+.hd-paper .cs-list li::marker {
+    color: var(--hd-blue);
+}
+
+.hd-paper .cs-impact-figure,
+.hd-paper .hd-result-figure {
+    color: var(--hd-blue);
+}
+
+.hd-paper .hd-result-sub {
+    color: #8a93b8;
+}
+
+.hd-paper .hd-result-title {
+    border-bottom-color: rgba(24, 28, 48, 0.1);
+}
+
+/* The headline result gets the Antigravity halo: a coloured bloom around the
+   card instead of a filled accent. */
+.hd .hd-result--hero {
+    box-shadow:
+        -22px 0 48px -18px rgba(91, 127, 238, 0.55),
+        22px -10px 48px -18px rgba(244, 200, 101, 0.55),
+        0 26px 48px -18px rgba(236, 143, 116, 0.5);
+}
+
+.hd .hd-result--hero .hd-result-figure {
+    color: var(--hd-blue);
+}
+
+.hd .hd-result--hero .hd-result-label {
+    color: var(--hd-muted);
+}
+
+/* Results to Outcome needs a full section break. */
+.hd .hd-section + .hd-outcome {
+    margin-top: var(--space-xxl);
+}
+
+/* --- HDFC: scope of work stack ---------------------------------------------- */
+.hd-stack {
+    --strip: 98px;
+    --banner: 150px;
+
+    position: relative;
+    margin: var(--space-md) 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* Title over copy, set the way Antigravity's product cards are: a plain,
+   medium-weight title and a larger grey line under it. The strip left
+   showing above the next banner is tall enough to carry both. */
+.hd-banner {
+    position: relative;
+    z-index: calc(var(--i) + 1);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: var(--banner);
+    padding: 22px var(--space-md);
+    border-radius: 28px !important;
+    box-shadow:
+        0 -1px 0 rgba(255, 255, 255, 0.9) inset,
+        0 -10px 28px -20px rgba(70, 60, 130, 0.22),
+        0 14px 30px -24px rgba(70, 60, 130, 0.25) !important;
+}
+
+.hd-banner + .hd-banner {
+    margin-top: calc(var(--strip) - var(--banner));
+}
+
+.hd-banner-title {
+    font-size: clamp(1.05rem, 2.2vw, 1.25rem);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: #1b1b1f;
+}
+
+.hd-banner-num {
+    margin-right: 0.55em;
+    color: var(--hd-blue);
+    font-variant-numeric: tabular-nums;
+}
+
+.hd-banner-note {
+    font-size: clamp(0.95rem, 1.9vw, 1.05rem);
+    line-height: 1.45;
+    color: #5f6368;
+}
+
+/* Barely-there gradients from white into light yellow, violet and purple,
+   so no banner reads as a flat fill. */
+.hd-tone--cream {
+    --paper: linear-gradient(120deg, #fffdf7 0%, #fff6e2 55%, #fdeede 100%);
+    --glow: radial-gradient(60% 60% at 15% 100%, #f6c98a 0%, transparent 70%),
+            radial-gradient(60% 60% at 80% 100%, #f9e3b4 0%, transparent 72%);
+}
+
+.hd-tone--violet {
+    --paper: linear-gradient(120deg, #ffffff 0%, #f6f3ff 55%, #ece8ff 100%);
+    --glow: radial-gradient(60% 60% at 20% 100%, #c9c2fb 0%, transparent 70%),
+            radial-gradient(60% 60% at 85% 100%, #f7d9e8 0%, transparent 72%);
+}
+
+.hd-tone--lilac {
+    --paper: linear-gradient(120deg, #fdfbff 0%, #f5ecff 55%, #efe4fc 100%);
+    --glow: radial-gradient(60% 60% at 15% 100%, #d9bdf5 0%, transparent 70%),
+            radial-gradient(60% 60% at 75% 100%, #bcd0fa 0%, transparent 72%);
+}
+
+.hd-tone--butter {
+    --paper: linear-gradient(120deg, #fffef9 0%, #fffae6 55%, #fbf3d6 100%);
+    --glow: radial-gradient(60% 60% at 20% 100%, #f5e08e 0%, transparent 70%),
+            radial-gradient(60% 60% at 80% 100%, #f3c2a2 0%, transparent 72%);
+}
+
+.hd-banner.hd-tone--white {
+    --paper: linear-gradient(120deg, #ffffff 0%, #fbfaff 60%, #f6f7ff 100%);
+    --glow: radial-gradient(55% 60% at 10% 100%, #a9c1fb 0%, transparent 70%),
+            radial-gradient(55% 60% at 50% 100%, #f1b3c1 0%, transparent 70%),
+            radial-gradient(55% 60% at 90% 100%, #f6dc8a 0%, transparent 72%);
+}
+
+.hd-banner::after {
+    opacity: 0.55;
+}
+
+@media (max-width: 760px) {
+    .hd-stack {
+        --strip: 116px;
+        --banner: 170px;
+    }
+}
+
+/* Entrance: each banner rises from below and settles over the one before,
+   one after another, then stays. */
+.hd-stack .hd-banner {
+    opacity: 0;
+    transform: translateY(70%);
+    transition:
+        opacity 500ms cubic-bezier(0.16, 1, 0.3, 1) calc(var(--i) * 380ms),
+        transform 900ms cubic-bezier(0.16, 1, 0.3, 1) calc(var(--i) * 380ms);
+}
+
+.hd-stack.is-in .hd-banner {
+    opacity: 1;
+    transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hd-stack .hd-banner {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+}
+
+/* The front banner only needs its own content height. */
+.hd-banner:last-child {
+    min-height: 0;
+    padding-bottom: var(--space-md);
+}
+
+/* Warmer tones for the scope stack, after the Antigravity glows. */
+.hd-tone--peach {
+    --paper: #fff3ea;
+    --glow: radial-gradient(60% 60% at 15% 100%, #f6a37a 0%, transparent 70%),
+            radial-gradient(60% 60% at 70% 100%, #f9d6a0 0%, transparent 72%);
+}
+
+.hd-tone--sun {
+    --paper: #fff8e6;
+    --glow: radial-gradient(60% 60% at 20% 100%, #f7c85e 0%, transparent 70%),
+            radial-gradient(60% 60% at 80% 100%, #f4a86b 0%, transparent 72%);
+}
+
+.hd-tone--rose {
+    --paper: #fff1f1;
+    --glow: radial-gradient(60% 60% at 20% 100%, #f19a92 0%, transparent 70%),
+            radial-gradient(60% 60% at 80% 100%, #f7c98a 0%, transparent 72%);
+}
+
+
+/* Dark theme: the light cards step down a touch and pick up a hairline
+   edge, so they sit on the dark page instead of glaring off it. */
+html:not(.light) .hd-paper,
+html:not(.light) .hd-insight {
+    filter: brightness(0.97);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 22px 50px -30px rgba(0, 0, 0, 0.7);
+}
+
+/* A figure with a superscript version, kept on one line so the card bodies
+   still line up across the row. */
+.cs-impact-figure--nowrap {
+    white-space: nowrap;
+}
+
+.cs-impact-sup {
+    margin-left: 0.08em;
+    font-size: 0.42em;
+    font-weight: 500;
+    letter-spacing: 0;
+    vertical-align: 1.15em;
+}
+
+/* Initiative rail: cards fade out as they approach either edge. Each card
+   fades as a whole (script sets its opacity from its position), so a card
+   leaving the frame dims evenly into the page instead of showing a lit band
+   where a mask cuts across it. A short mask only softens the clip line. */
+.hd-rail {
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%);
+}
+
+.hd-insight {
+    will-change: opacity, transform;
+}
